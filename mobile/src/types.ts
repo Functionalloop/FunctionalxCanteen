@@ -2,12 +2,11 @@ export type Allergen = 'Gluten' | 'Dairy' | 'Egg' | 'Nuts' | 'Peanuts';
 export type Dietary = 'Veg' | 'Non-Veg' | 'Egg';
 export type MenuStatus = 'Available' | 'Running Low' | 'Finished';
 export type OrderStatus = 'queued' | 'preparing' | 'ready' | 'picked_up';
-export type HealthLevel = 1 | 2 | 3;
 
 export interface MenuItem {
   id: string;
   name: string;
-  category?: string;
+  category?: string; // e.g. 'breakfast', 'lunch', 'dinner', 'snacks'
   price: number;
   dietary: Dietary;
   allergens: Allergen[];
@@ -17,7 +16,6 @@ export interface MenuItem {
   reviews: number;
   prepTime: string;
   distance: string;
-  healthLevel?: HealthLevel;
 }
 
 export interface Order {
@@ -31,7 +29,6 @@ export interface Order {
   created_at: string;
   estimated_minutes?: number;
   estimated_ready_at?: string;
-  pointsEarned?: number;
 }
 
 export interface OrderItem {
@@ -41,7 +38,6 @@ export interface OrderItem {
   quantity: number;
   image?: string;
   dietary: string;
-  healthLevel?: HealthLevel;
 }
 
 export interface Broadcast {
@@ -59,13 +55,4 @@ export interface WalletTransaction {
   description: string;
   timestamp: string;
   tokenNo?: string;
-}
-
-export interface RewardCoupon {
-  id: string;
-  title: string;
-  discount: number;
-  pointsCost: number;
-  redeemed: boolean;
-  redeemedAt?: string;
 }

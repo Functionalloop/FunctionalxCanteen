@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Send, TrendingUp, AlertTriangle, ArrowRight, ArrowDownRight, ArrowUpRight, ImageIcon, ChefHat, CheckCircle2, Clock, Package, RefreshCw, Timer, Trash2 } from 'lucide-react';
+import { Send, TrendingUp, AlertTriangle, ArrowRight, ArrowDownRight, ArrowUpRight, ImageIcon, ChefHat, CheckCircle2, Clock, Package, RefreshCw, Timer, Trash2, Leaf } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { api, subscribe, STORAGE_KEYS, type MenuTemplate } from '../lib/api';
-import type { Order } from '../types';
+import type { Order, MenuItem, HealthLevel } from '../types';
 
 export default function VendorDashboard() {
   // Template form state
@@ -23,12 +23,14 @@ export default function VendorDashboard() {
   // Orders state
   const [orders, setOrders] = useState<Order[]>([]);
   const [seeding, setSeeding] = useState(false);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
 
   // Load data on mount
   useEffect(() => {
     loadTemplates();
     loadOrders();
     loadBroadcasts();
+    loadMenuItems();
 
     // Subscribe to order changes + poll
     const unsub = subscribe(STORAGE_KEYS.ORDERS, loadOrders);
@@ -50,6 +52,16 @@ export default function VendorDashboard() {
   const loadBroadcasts = async () => {
     const data = await api.getBroadcasts();
     setBroadcasts(data);
+  };
+
+  const loadMenuItems = async () => {
+    const data = await api.getMenu();
+    setMenuItems(data);
+  };
+
+  const handleSetHealthLevel = async (itemId: string, level: HealthLevel) => {
+    await api.setMenuItemHealthLevel(itemId, level);
+    loadMenuItems();
   };
 
   const handleSaveTemplate = async () => {
@@ -408,6 +420,61 @@ export default function VendorDashboard() {
                  ))
                )}
              </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-10">
+        <div className="flex justify-between items-end mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2"><Leaf size={20} className="text-emerald-500" /> Menu Health Ratings</h2>
+            <p className="text-xs text-slate-500">Set health level for each menu item. Affects student Life GPA and reward points.</p>
+          </div>
+          <button onClick={loadMenuItems} className="text-xs text-sky-500 font-semibold hover:text-sky-400 flex items-center gap-1">
+            <RefreshCw size={12} /> Refresh
+          </button>
+        </div>
+        <div className="bg-[#18181B] rounded-2xl border border-slate-800 p-5">
+          {menuItems.length === 0 ? (
+            <div className="text-center text-slate-500 text-sm py-8">No menu items. Seed the menu first.</div>
+          ) : (
+            <div className="space-y-3">
+              {menuItems.map(item => (
+                <div key={item.id} className="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-800/50">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {item.image && <img src={item.image} className="w-10 h-10 rounded-lg object-cover shrink-0" alt={item.name} />}
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold text-white truncate">{item.name}</div>
+                      <div className="text-[10px] text-slate-500">{item.category} · ₹{item.price}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {([1, 2, 3] as HealthLevel[]).map(level => (
+                      <button
+                        key={level}
+                        onClick={() => handleSetHealthLevel(item.id, level)}
+                        className={cn(
+                          "w-8 h-8 rounded-lg text-xs font-bold transition-all",
+                          (item.healthLevel || 1) === level
+                            ? level === 3 ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30"
+                            : level === 2 ? "bg-amber-500 text-black shadow-lg shadow-amber-500/30"
+                            : "bg-red-500 text-white shadow-lg shadow-red-500/30"
+                            : "bg-slate-800 text-slate-500 hover:bg-slate-700"
+                        )}
+                        title={level === 1 ? 'Indulgent' : level === 2 ? 'Moderate' : 'Healthy'}
+                      >
+                        {level === 1 ? '🍟' : level === 2 ? '🥗' : '💚'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-4 mt-4 pt-4 border-t border-slate-800 text-[10px] text-slate-500">
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-500 inline-block"></span> 🍟 Indulgent (Level 1)</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-500 inline-block"></span> 🥗 Moderate (Level 2)</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-500 inline-block"></span> 💚 Healthy (Level 3)</span>
           </div>
         </div>
       </div>

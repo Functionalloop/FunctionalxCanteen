@@ -1,32 +1,93 @@
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
     "menu": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      ".write": "auth != null",
+      "$itemId": {
+        "healthLevel": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
+        }
+      }
     },
+
     "broadcasts": {
       ".read": "auth != null",
       ".write": "auth != null"
     },
+
     "orders": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      ".write": "auth != null",
+      "$orderId": {
+        ".validate": "newData.hasChildren(['id', 'tokenNo', 'items', 'total_amount', 'status', 'created_at'])",
+        "total_amount": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "pointsEarned": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "status": {
+          ".validate": "newData.isString() && newData.val().matches(/^(queued|preparing|ready|picked_up)$/)"
+        }
+      }
     },
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+
+        "wallet": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+
+        "transactions": {
+          "$txnId": {
+            ".validate": "newData.hasChildren(['id', 'type', 'amount', 'description', 'timestamp'])",
+            "type": {
+              ".validate": "newData.isString() && newData.val().matches(/^(deduction|credit)$/)"
+            },
+            "amount": {
+              ".validate": "newData.isNumber() && newData.val() >= 0"
+            }
+          }
+        },
+
+        "gpa": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10"
+        },
+
+        "streak": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+
+        "points": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+
+        "role": {
+          ".validate": "newData.isString()"
+        },
+
+        "name": {
+          ".validate": "newData.isString()"
+        },
+
+        "email": {
+          ".validate": "newData.isString()"
+        }
+      }
+    },
+
     "menuTemplates": {
       ".read": "auth != null",
       ".write": "auth != null"
     },
+
     "tokenCounter": {
       ".read": "auth != null",
-      ".write": "auth != null"
-    },
-    "users": {
-      "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid"
-      }
+      ".write": "auth != null",
+      ".validate": "newData.isNumber() && newData.val() >= 0"
     }
   }
 }

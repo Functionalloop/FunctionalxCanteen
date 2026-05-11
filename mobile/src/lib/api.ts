@@ -1,17 +1,18 @@
 /**
  * Firebase Realtime Database data layer.
+ * All canteen data (menu, orders, broadcasts, wallet, templates) is
+ * persisted in Firebase RTDB under structured paths.
  *
  * RTDB schema:
- *   /menu/{itemId}                       – MenuItem (incl. healthLevel)
- *   /broadcasts/{broadcastId}            – Broadcast
- *   /orders/{orderId}                    – Order (with studentId, pointsEarned)
- *   /users/{uid}/wallet                  – number (balance)
- *   /users/{uid}/transactions/{txnId}    – WalletTransaction
- *   /users/{uid}/gpa                     – number (0-10)
- *   /users/{uid}/streak                  – number
- *   /users/{uid}/points                  – number (reward points)
- *   /menuTemplates/{templateId}          – MenuTemplate
- *   /tokenCounter                        – number
+ *   /menu/{itemId}              – MenuItem
+ *   /broadcasts/{broadcastId}   – Broadcast
+ *   /orders/{orderId}           – Order (with studentId)
+ *   /users/{uid}/wallet         – number (balance)
+ *   /users/{uid}/transactions/{txnId} – WalletTransaction
+ *   /users/{uid}/gpa            – number
+ *   /users/{uid}/streak         – number
+ *   /menuTemplates/{templateId} – MenuTemplate
+ *   /tokenCounter               – number
  */
 
 import {
@@ -33,8 +34,6 @@ import type {
   Order,
   OrderItem,
   OrderStatus,
-  RewardCoupon,
-  HealthLevel,
 } from '../types';
 
 // ─── Template Type ───────────────────────────────────────────
@@ -175,30 +174,23 @@ export const api = {
       const userId = uid();
       const walletRef = ref(db, `users/${userId}/wallet`);
 
+      // Step 1: Read current balance
       const balanceSnap = await get(walletRef);
       const currentBalance: number = balanceSnap.exists() ? balanceSnap.val() : 0;
 
+      // Step 2: Check sufficiency before touching the DB
       if (currentBalance < total_amount) {
         return { error: 'Insufficient balance' };
       }
 
+      // Step 3: Deduct balance
       const newBalance = currentBalance - total_amount;
       await set(walletRef, newBalance);
 
+      // Step 4: Generate token
       const tokenNo = await getNextToken();
 
-      // Calculate reward points: 10 base + 5 per healthy item (healthLevel 3)
-      let pointsEarned = 10;
-      let totalHealthScore = 0;
-      let healthyItemCount = 0;
-      for (const item of items) {
-        const hl = item.healthLevel || 1;
-        totalHealthScore += hl * item.quantity;
-        healthyItemCount += item.quantity;
-        if (hl === 3) pointsEarned += 5 * item.quantity;
-        if (hl === 2) pointsEarned += 2 * item.quantity;
-      }
-
+      // Step 5: Create order in /orders
       const orderRef = push(ref(db, 'orders'));
       const order: Order = {
         id: orderRef.key!,
@@ -209,10 +201,10 @@ export const api = {
         studentId: userId,
         scheduled_time: scheduledTime || new Date().toISOString(),
         created_at: new Date().toISOString(),
-        pointsEarned,
       };
       await set(orderRef, order);
 
+      // Step 6: Add transaction record under the user
       const txnRef = push(ref(db, `users/${userId}/transactions`));
       const txn: WalletTransaction = {
         id: txnRef.key!,
@@ -224,27 +216,7 @@ export const api = {
       };
       await set(txnRef, txn);
 
-      // Award points
-      const pointsSnap = await get(ref(db, `users/${userId}/points`));
-      const currentPoints = pointsSnap.exists() ? pointsSnap.val() : 0;
-      await set(ref(db, `users/${userId}/points`), currentPoints + pointsEarned);
-
-      // Recalculate GPA based on meal health
-      const avgHealth = healthyItemCount > 0 ? totalHealthScore / healthyItemCount : 1;
-      const gpaSnap = await get(ref(db, `users/${userId}/gpa`));
-      const currentGpa: number = gpaSnap.exists() ? gpaSnap.val() : 5;
-      const gpaImpact = (avgHealth / 3) * 10;
-      const newGpa = parseFloat(Math.min(10, Math.max(0, (currentGpa * 0.8 + gpaImpact * 0.2))).toFixed(1));
-      await set(ref(db, `users/${userId}/gpa`), newGpa);
-
-      // Increment streak if a healthy order (avg health >= 2)
-      if (avgHealth >= 2) {
-        const streakSnap = await get(ref(db, `users/${userId}/streak`));
-        const currentStreak: number = streakSnap.exists() ? streakSnap.val() : 0;
-        await set(ref(db, `users/${userId}/streak`), currentStreak + 1);
-      }
-
-      return { success: true, order, balance: newBalance, pointsEarned };
+      return { success: true, order, balance: newBalance };
     } catch (err: any) {
       console.error('placeOrder error:', err);
       return { error: err?.message || 'Order failed. Please try again.' };
@@ -348,82 +320,21 @@ export const api = {
     );
   },
 
+  // ── GPA / Wellness ────────────────────────────────────────
   calculateGPA: async (_student_id: string) => {
     const userId = uid();
-    const gpa = await readOnce<number>(`users/${userId}/gpa`, 5);
-    const streak = await readOnce<number>(`users/${userId}/streak`, 0);
-    const points = await readOnce<number>(`users/${userId}/points`, 0);
-
-    const ordersData = await readOnce<Record<string, Order> | null>('orders', null);
-    const userOrders = objToArray(ordersData).filter(o => o.studentId === userId);
-    const sorted = userOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    const recentMeals = sorted.slice(0, 5).flatMap(o => o.items.map(i => i.name));
-    const orderDates = sorted.map(o => o.created_at);
-
-    return { gpa, streak, points, recentMeals, orderDates };
-  },
-
-  getPoints: async (): Promise<number> => {
-    const userId = uid();
-    return readOnce<number>(`users/${userId}/points`, 0);
-  },
-
-  getAvailableCoupons: (): RewardCoupon[] => {
-    return [
-      { id: 'coupon_10', title: '₹10 Off', discount: 10, pointsCost: 50, redeemed: false },
-      { id: 'coupon_25', title: '₹25 Off', discount: 25, pointsCost: 100, redeemed: false },
-      { id: 'coupon_50', title: '₹50 Off', discount: 50, pointsCost: 200, redeemed: false },
-      { id: 'coupon_100', title: '₹100 Off', discount: 100, pointsCost: 400, redeemed: false },
-    ];
-  },
-
-  redeemCoupon: async (couponId: string, pointsCost: number, discount: number) => {
-    const userId = uid();
-    const pointsSnap = await get(ref(db, `users/${userId}/points`));
-    const currentPoints: number = pointsSnap.exists() ? pointsSnap.val() : 0;
-
-    if (currentPoints < pointsCost) {
-      return { error: 'Not enough points' };
-    }
-
-    await set(ref(db, `users/${userId}/points`), currentPoints - pointsCost);
-
-    const walletRef = ref(db, `users/${userId}/wallet`);
-    const walletSnap = await get(walletRef);
-    const currentBalance: number = walletSnap.exists() ? walletSnap.val() : 0;
-    await set(walletRef, currentBalance + discount);
-
-    const txnRef = push(ref(db, `users/${userId}/transactions`));
-    const txn: WalletTransaction = {
-      id: txnRef.key!,
-      type: 'credit',
-      amount: discount,
-      description: `Coupon Redeemed (${pointsCost} pts)`,
-      timestamp: new Date().toLocaleString(),
-    };
-    await set(txnRef, txn);
-
-    return { success: true, newPoints: currentPoints - pointsCost, newBalance: currentBalance + discount };
-  },
-
-  awardWeeklyBonus: async () => {
-    const userId = uid();
     const gpa = await readOnce<number>(`users/${userId}/gpa`, 0);
-    if (gpa >= 8) {
-      const pointsSnap = await get(ref(db, `users/${userId}/points`));
-      const currentPoints: number = pointsSnap.exists() ? pointsSnap.val() : 0;
-      const bonus = 25;
-      await set(ref(db, `users/${userId}/points`), currentPoints + bonus);
-      return { awarded: true, bonus, newPoints: currentPoints + bonus };
-    }
-    return { awarded: false, bonus: 0 };
+    const streak = await readOnce<number>(`users/${userId}/streak`, 0);
+    return {
+      gpa,
+      streak,
+      message: streak > 0
+        ? `You have a ${streak}-day healthy eating streak! Keep it up.`
+        : 'Start your healthy eating streak today!',
+    };
   },
 
-  setMenuItemHealthLevel: async (itemId: string, healthLevel: HealthLevel) => {
-    await update(ref(db, `menu/${itemId}`), { healthLevel });
-    return { success: true };
-  },
-
+  // ── Crowd Prediction ──────────────────────────────────────
   predictCrowd: async () => {
     const hour = new Date().getHours();
     if (hour >= 12 && hour <= 14) {
@@ -431,7 +342,6 @@ export const api = {
     }
     return { status: 'Clear', reason: 'No major classes ended recently.' };
   },
-
 
   // ── Broadcasts ─────────────────────────────────────────────
   getBroadcasts: async (): Promise<Broadcast[]> => {
@@ -509,7 +419,6 @@ export const api = {
       reviews: 0,
       prepTime: '15 min',
       distance: '0 km (Campus)',
-      healthLevel: 3,
     };
     await set(newRef, newItem);
     return newItem;
@@ -521,13 +430,13 @@ export const api = {
     await set(ref(db, 'menu'), null);
 
     const INITIAL_MENU = [
-      { name: 'Tandoori Pizza', category: 'snacks', price: 350, dietary: 'Veg', allergens: ['Dairy', 'Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80&w=600', rating: 4.3, reviews: 27, prepTime: '15-30 min', distance: '1.3 km', healthLevel: 2 },
-      { name: 'Burger Deluxe', category: 'lunch', price: 180, dietary: 'Non-Veg', allergens: ['Gluten', 'Dairy', 'Egg'], status: 'Available', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=600', rating: 4.7, reviews: 35, prepTime: '20-35 min', distance: '2.5 km', healthLevel: 1 },
-      { name: 'Chinese Fried Noodles', category: 'dinner', price: 120, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&q=80&w=600', rating: 4.5, reviews: 42, prepTime: '20-35 min', distance: '2.1 km', healthLevel: 2 },
-      { name: 'Rajma Chawal', category: 'lunch', price: 80, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1626082895617-2c6bfcc32746?auto=format&fit=crop&q=80&w=600', rating: 4.8, reviews: 120, prepTime: '5-10 min', distance: '0 km (Campus)', healthLevel: 3 },
-      { name: 'Vada Pav', category: 'snacks', price: 35, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1626074353765-517a681e40be?auto=format&fit=crop&q=80&w=600', rating: 4.2, reviews: 89, prepTime: '5 min', distance: '0 km (Campus)', healthLevel: 1 },
-      { name: 'Dal Tadka + Rice', category: 'dinner', price: 70, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1546549032-9571cd6b27df?auto=format&fit=crop&q=80&w=600', rating: 4.3, reviews: 64, prepTime: '10 min', distance: '0 km (Campus)', healthLevel: 3 },
-      { name: 'Masala Dosa', category: 'breakfast', price: 60, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&q=80&w=600', rating: 4.6, reviews: 98, prepTime: '10-15 min', distance: '0 km (Campus)', healthLevel: 3 },
+      { name: 'Tandoori Pizza', category: 'snacks', price: 350, dietary: 'Veg', allergens: ['Dairy', 'Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80&w=600', rating: 4.3, reviews: 27, prepTime: '15-30 min', distance: '1.3 km' },
+      { name: 'Burger Deluxe', category: 'lunch', price: 180, dietary: 'Non-Veg', allergens: ['Gluten', 'Dairy', 'Egg'], status: 'Available', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=600', rating: 4.7, reviews: 35, prepTime: '20-35 min', distance: '2.5 km' },
+      { name: 'Chinese Fried Noodles', category: 'dinner', price: 120, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&q=80&w=600', rating: 4.5, reviews: 42, prepTime: '20-35 min', distance: '2.1 km' },
+      { name: 'Rajma Chawal', category: 'lunch', price: 80, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1626082895617-2c6bfcc32746?auto=format&fit=crop&q=80&w=600', rating: 4.8, reviews: 120, prepTime: '5-10 min', distance: '0 km (Campus)' },
+      { name: 'Vada Pav', category: 'snacks', price: 35, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1626074353765-517a681e40be?auto=format&fit=crop&q=80&w=600', rating: 4.2, reviews: 89, prepTime: '5 min', distance: '0 km (Campus)' },
+      { name: 'Dal Tadka + Rice', category: 'dinner', price: 70, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1546549032-9571cd6b27df?auto=format&fit=crop&q=80&w=600', rating: 4.3, reviews: 64, prepTime: '10 min', distance: '0 km (Campus)' },
+      { name: 'Masala Dosa', category: 'breakfast', price: 60, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&q=80&w=600', rating: 4.6, reviews: 98, prepTime: '10-15 min', distance: '0 km (Campus)' },
     ] as const;
 
     for (const item of INITIAL_MENU) {

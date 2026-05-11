@@ -50,6 +50,7 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
           quantity,
           image: orderItem.image,
           dietary: orderItem.dietary,
+          healthLevel: (orderItem as any).healthLevel || 1,
         }],
         total,
         selectedTime === 'asap' ? undefined : selectedTime
@@ -60,7 +61,8 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
         return;
       }
 
-      // Success!
+      const pts = (result as any).pointsEarned || 10;
+      alert(`✅ Order placed! You earned ${pts} reward points.`);
       onOrderPlaced();
     } catch (err: any) {
       console.error('Order placement failed:', err);
