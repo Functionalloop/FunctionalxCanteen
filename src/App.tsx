@@ -13,7 +13,6 @@ import VendorDashboard from './components/VendorDashboard';
 import StudentCheckout from './components/StudentCheckout';
 import StudentProfile from './components/StudentProfile';
 
-// Wrap the app in AuthProvider
 export default function App() {
   return (
     <AuthProvider>
@@ -25,12 +24,10 @@ export default function App() {
 function AppRouter() {
   const { user, loading, logout } = useAuth();
 
-  // Sync current user UID into the API layer so wallet/transactions work
   useEffect(() => {
     setCurrentUserId(user?.uid ?? null);
   }, [user]);
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -42,12 +39,10 @@ function AppRouter() {
     );
   }
 
-  // Not logged in — show login screen
   if (!user) {
     return <LoginScreen />;
   }
 
-  // Logged in — route based on role
   if (user.role === 'vendor') {
     return <VendorApp user={user} onLogout={logout} />;
   }
@@ -55,9 +50,7 @@ function AppRouter() {
   return <StudentApp user={user} onLogout={logout} />;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// STUDENT APP
-// ═══════════════════════════════════════════════════════════════
+
 type StudentTab = 'home' | 'queue' | 'wellness' | 'wallet';
 type StudentScreen = 'main' | 'checkout' | 'profile';
 
@@ -102,7 +95,6 @@ function StudentApp({ user, onLogout }: { user: any; onLogout: () => void }) {
         )}
         {activeScreen === 'profile' && <StudentProfile onBack={() => handleNavigate('main')} onLogout={onLogout} user={user} />}
 
-        {/* Mobile Bottom Navigation */}
         {activeScreen === 'main' && (
           <nav className="fixed bottom-0 w-full max-w-md bg-zinc-950 border-t border-zinc-900 z-50 px-6 py-3 pb-safe flex justify-between items-center">
             <NavItem icon={<Home size={24} />} label="Home" isActive={activeTab === 'home'} onClick={() => setActiveTab('home')} />
@@ -113,11 +105,9 @@ function StudentApp({ user, onLogout }: { user: any; onLogout: () => void }) {
         )}
       </main>
 
-      {/* Desktop sidebar */}
       <div className="hidden md:flex w-64 p-6 bg-zinc-950 border-l border-zinc-900 flex-col gap-6">
         <h2 className="text-xl font-semibold text-white tracking-tight">FunctionalCanteen</h2>
 
-        {/* User info */}
         <div className="bg-[#18181B] rounded-xl p-4 border border-slate-800">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-full bg-rose-600/20 overflow-hidden shrink-0 border border-rose-600/30">
@@ -150,9 +140,7 @@ function StudentApp({ user, onLogout }: { user: any; onLogout: () => void }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// VENDOR APP
-// ═══════════════════════════════════════════════════════════════
+
 function VendorApp({ user, onLogout }: { user: any; onLogout: () => void }) {
   return (
     <div className="min-h-screen bg-slate-950 text-zinc-100 font-sans flex flex-col md:flex-row">
@@ -160,11 +148,9 @@ function VendorApp({ user, onLogout }: { user: any; onLogout: () => void }) {
         <VendorDashboard />
       </main>
 
-      {/* Desktop sidebar */}
       <div className="hidden md:flex w-64 p-6 bg-zinc-950 border-l border-zinc-900 flex-col gap-6">
         <h2 className="text-xl font-semibold text-white tracking-tight">FunctionalCanteen</h2>
 
-        {/* User info */}
         <div className="bg-[#18181B] rounded-xl p-4 border border-slate-800">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-full bg-sky-500/20 overflow-hidden shrink-0 border border-sky-500/30">
@@ -197,9 +183,7 @@ function VendorApp({ user, onLogout }: { user: any; onLogout: () => void }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// NAV ITEM
-// ═══════════════════════════════════════════════════════════════
+
 function NavItem({ icon, label, isActive, onClick }: { icon: React.ReactNode; label: string; isActive: boolean; onClick: () => void }) {
   return (
     <button
