@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Send, TrendingUp, AlertTriangle, ArrowRight, ArrowDownRight, ArrowUpRight, ImageIcon, ChefHat, CheckCircle2, Clock, Package, RefreshCw, Timer, Trash2, Leaf } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { api, subscribe, STORAGE_KEYS, type MenuTemplate } from '../lib/api';
+import { getVendorActionBoard } from '../lib/gemini';
 import type { Order, MenuItem, HealthLevel } from '../types';
 
 export default function VendorDashboard() {
@@ -24,6 +25,12 @@ export default function VendorDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [seeding, setSeeding] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+
+  // Action Board state
+  const [actionBoard, setActionBoard] = useState<{
+    serveDaily: any[]; reviewRecipe: any[]; considerRemoving: any[];
+  }>({ serveDaily: [], reviewRecipe: [], considerRemoving: [] });
+  const [loadingBoard, setLoadingBoard] = useState(false);
 
   // Load data on mount
   useEffect(() => {
@@ -57,6 +64,13 @@ export default function VendorDashboard() {
   const loadMenuItems = async () => {
     const data = await api.getMenu();
     setMenuItems(data);
+    if (data.length > 0) {
+      setLoadingBoard(true);
+      getVendorActionBoard(data).then(board => {
+        if (board) setActionBoard(board);
+        setLoadingBoard(false);
+      }).catch(() => setLoadingBoard(false));
+    }
   };
 
   const handleSetHealthLevel = async (itemId: string, level: HealthLevel) => {
@@ -331,24 +345,30 @@ export default function VendorDashboard() {
       </div>
       
       {/* ═══════════════ VOUCH ACTION BOARD ═══════════════ */}
-      <h2 className="text-xl font-bold text-white mb-4">AI Vouch Action Board</h2>
+      <div className="flex items-center gap-3 mb-4">
+        <h2 className="text-xl font-bold text-white">AI Vouch Action Board</h2>
+        {loadingBoard && <span className="text-xs text-brand-light animate-pulse">Analyzing menu...</span>}
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <Column title="Serve Daily" count={12} color="text-emerald-500 bg-emerald-500/10 border-emerald-500/20">
-           <ActionCard item="Rajma Chawal" rating="4.8" subtext="22 orders today" trend="up" />
-           <ActionCard item="Poha + Chutney" rating="4.6" subtext="high demand" trend="up" />
-           <ActionCard item="Dal Tadka + Rice" rating="4.3" subtext="improving" trend="up" />
+        <Column title="Serve Daily" count={actionBoard.serveDaily.length} color="text-emerald-500 bg-emerald-500/10 border-emerald-500/20">
+           {actionBoard.serveDaily.map((item, i) => (
+             <ActionCard key={i} item={item.item} rating={item.rating} subtext={item.subtext} trend={item.trend} />
+           ))}
+           {actionBoard.serveDaily.length === 0 && !loadingBoard && <p className="text-xs text-slate-500 italic p-2">No items qualified.</p>}
         </Column>
 
-        <Column title="Review Recipe" count={8} color="text-yellow-400 bg-yellow-400/10 border-yellow-400/20">
-           <ActionCard item="Vada Pav" rating="4.2" subtext="was 4.6 last wk" trend="down" />
-           <ActionCard item="Dum Aloo" rating="3.8" subtext="was 4.1" trend="down" />
-           <ActionCard item="Sambar Rice" rating="3.7" subtext="mixed reviews" trend="stale" />
+        <Column title="Review Recipe" count={actionBoard.reviewRecipe.length} color="text-yellow-400 bg-yellow-400/10 border-yellow-400/20">
+           {actionBoard.reviewRecipe.map((item, i) => (
+             <ActionCard key={i} item={item.item} rating={item.rating} subtext={item.subtext} trend={item.trend} />
+           ))}
+           {actionBoard.reviewRecipe.length === 0 && !loadingBoard && <p className="text-xs text-slate-500 italic p-2">No items qualified.</p>}
         </Column>
 
-        <Column title="Consider Removing" count={4} color="text-red-500 bg-red-500/10 border-red-500/20">
-           <ActionCard item="Pav Bhaji" rating="3.2" subtext="2 weeks low" trend="down" />
-           <ActionCard item="Bread Omelette" rating="2.9" subtext="high waste" trend="down" />
-           <ActionCard item="Sweet Corn Soup" rating="2.7" subtext="low orders" trend="down" />
+        <Column title="Consider Removing" count={actionBoard.considerRemoving.length} color="text-red-500 bg-red-500/10 border-red-500/20">
+           {actionBoard.considerRemoving.map((item, i) => (
+             <ActionCard key={i} item={item.item} rating={item.rating} subtext={item.subtext} trend={item.trend} />
+           ))}
+           {actionBoard.considerRemoving.length === 0 && !loadingBoard && <p className="text-xs text-slate-500 italic p-2">No items qualified.</p>}
         </Column>
       </div>
 
@@ -412,7 +432,7 @@ export default function VendorDashboard() {
                      </div>
                      <button 
                        onClick={() => handleAddToMenu(t.id)}
-                       className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors"
+                       className="bg-brand hover:bg-brand-light text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors"
                      >
                        Add to Today's Menu
                      </button>

@@ -521,13 +521,13 @@ export const api = {
     await set(ref(db, 'menu'), null);
 
     const INITIAL_MENU = [
-      { name: 'Tandoori Pizza', category: 'snacks', price: 350, dietary: 'Veg', allergens: ['Dairy', 'Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80&w=600', rating: 4.3, reviews: 27, prepTime: '15-30 min', distance: '1.3 km', healthLevel: 2 },
-      { name: 'Burger Deluxe', category: 'lunch', price: 180, dietary: 'Non-Veg', allergens: ['Gluten', 'Dairy', 'Egg'], status: 'Available', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=600', rating: 4.7, reviews: 35, prepTime: '20-35 min', distance: '2.5 km', healthLevel: 1 },
+      { name: 'Tandoori Pizza', category: 'snacks', price: 350, dietary: 'Veg', allergens: ['Dairy', 'Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80&w=600', rating: 4.6, reviews: 250, prepTime: '15-30 min', distance: '1.3 km', healthLevel: 2 },
+      { name: 'Burger Deluxe', category: 'lunch', price: 180, dietary: 'Non-Veg', allergens: ['Gluten', 'Dairy', 'Egg'], status: 'Available', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=600', rating: 4.9, reviews: 300, prepTime: '20-35 min', distance: '2.5 km', healthLevel: 1 },
       { name: 'Chinese Fried Noodles', category: 'dinner', price: 120, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&q=80&w=600', rating: 4.5, reviews: 42, prepTime: '20-35 min', distance: '2.1 km', healthLevel: 2 },
       { name: 'Rajma Chawal', category: 'lunch', price: 80, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1626082895617-2c6bfcc32746?auto=format&fit=crop&q=80&w=600', rating: 4.8, reviews: 120, prepTime: '5-10 min', distance: '0 km (Campus)', healthLevel: 3 },
       { name: 'Vada Pav', category: 'snacks', price: 35, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1626074353765-517a681e40be?auto=format&fit=crop&q=80&w=600', rating: 4.2, reviews: 89, prepTime: '5 min', distance: '0 km (Campus)', healthLevel: 1 },
-      { name: 'Dal Tadka + Rice', category: 'dinner', price: 70, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1546549032-9571cd6b27df?auto=format&fit=crop&q=80&w=600', rating: 4.3, reviews: 64, prepTime: '10 min', distance: '0 km (Campus)', healthLevel: 3 },
-      { name: 'Masala Dosa', category: 'breakfast', price: 60, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&q=80&w=600', rating: 4.6, reviews: 98, prepTime: '10-15 min', distance: '0 km (Campus)', healthLevel: 3 },
+      { name: 'Dal Tadka + Rice', category: 'dinner', price: 70, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1546549032-9571cd6b27df?auto=format&fit=crop&q=80&w=600', rating: 4.3, reviews: 180, prepTime: '10 min', distance: '0 km (Campus)', healthLevel: 3 },
+      { name: 'Masala Dosa', category: 'breakfast', price: 60, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&q=80&w=600', rating: 4.7, reviews: 210, prepTime: '10-15 min', distance: '0 km (Campus)', healthLevel: 3 },
     ] as const;
 
     for (const item of INITIAL_MENU) {
@@ -560,9 +560,26 @@ export const api = {
     const snap = await get(ref(db, `menu/${item_id}`));
     if (!snap.exists()) return { error: 'Item not found' };
     const item: MenuItem = snap.val();
-    const newRating = parseFloat(((item.rating + rating) / 2).toFixed(1));
-    const newReviews = item.reviews + 1;
+    const currentRating = item.rating || 5;
+    const currentReviews = item.reviews || 0;
+    
+    const newReviews = currentReviews + 1;
+    const newRating = parseFloat((((currentRating * currentReviews) + rating) / newReviews).toFixed(1));
+    
     await update(ref(db, `menu/${item_id}`), { rating: newRating, reviews: newReviews });
     return { message: 'Rating updated', item: { ...item, rating: newRating, reviews: newReviews } };
+  },
+
+  awardReviewPoints: async (): Promise<{ newPoints: number }> => {
+    const userId = uid();
+    const snap = await get(ref(db, `users/${userId}/points`));
+    const currentPoints = snap.exists() ? snap.val() : 0;
+    const newPoints = currentPoints + 5;
+    await set(ref(db, `users/${userId}/points`), newPoints);
+    return { newPoints };
+  },
+
+  markOrderReviewed: async (orderId: string) => {
+    await update(ref(db, `orders/${orderId}`), { reviewed: true });
   },
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, MapPin, Wallet, Plus, Minus, Users, ChevronRight, Clock, CheckCircle2, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, MapPin, Wallet, Plus, Minus, Users, ChevronRight, Clock, CheckCircle2, ShoppingBag, Smartphone, Send } from 'lucide-react';
 import { api } from '../lib/api';
 import type { MenuItem } from '../types';
 
@@ -15,6 +15,7 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
   const [balance, setBalance] = useState(0);
   const [isOrdering, setIsOrdering] = useState(false);
   const [selectedTime, setSelectedTime] = useState('asap');
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'upi' | 'parents'>('wallet');
 
   // Fallback item if none provided
   const orderItem = item || {
@@ -94,7 +95,7 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
         {/* Item */}
         <div className="space-y-4">
           <div className="bg-[#18181B] rounded-2xl p-4 flex items-center border border-white/5">
-            <div className={`w-4 h-4 rounded-full border-4 mr-4 shrink-0 ${orderItem.dietary === 'Veg' ? 'border-emerald-500' : 'border-rose-600'}`}></div>
+            <div className={`w-4 h-4 rounded-full border-4 mr-4 shrink-0 ${orderItem.dietary === 'Veg' ? 'border-emerald-500' : 'border-brand-text'}`}></div>
             <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 mr-3">
               <img src={orderItem.image} alt={orderItem.name} className="w-full h-full object-cover" />
             </div>
@@ -112,7 +113,7 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
         </div>
 
         {/* Group Order Toggle */}
-        <div className="bg-[#18181B] rounded-2xl p-5 border border-rose-600/30 relative overflow-hidden transition-all duration-300">
+        <div className="bg-[#18181B] rounded-2xl p-5 border border-brand/30 relative overflow-hidden transition-all duration-300">
              <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                 <Users size={64} />
              </div>
@@ -123,7 +124,7 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
                </div>
                <button 
                   onClick={() => setIsGroupOrder(!isGroupOrder)}
-                  className={`w-12 h-6 rounded-full transition-colors relative ${isGroupOrder ? 'bg-rose-600' : 'bg-slate-700'}`}
+                  className={`w-12 h-6 rounded-full transition-colors relative ${isGroupOrder ? 'bg-brand' : 'bg-slate-700'}`}
                >
                   <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${isGroupOrder ? 'left-7' : 'left-1.5'}`}></div>
                </button>
@@ -166,7 +167,7 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
                        onClick={() => setSelectedTime(opt.key)}
                        className={`px-4 py-2 border rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-colors ${
                          selectedTime === opt.key 
-                           ? 'border-rose-600 bg-rose-600/10 text-rose-600' 
+                           ? 'border-brand bg-brand/10 text-brand-text' 
                            : 'border-slate-700 bg-slate-950 hover:bg-slate-900 text-slate-300'
                        }`}
                      >
@@ -214,19 +215,68 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
              <h3 className="font-bold text-sm text-white">Payment Method</h3>
              <button className="text-xs text-sky-500 font-medium">Edit</button>
           </div>
-          <div className="bg-[#18181B] rounded-2xl p-4 flex items-center justify-between border border-white/5 cursor-pointer hover:bg-slate-900 transition-colors">
-             <div className="flex items-center gap-3">
-               <div className="w-8 h-8 rounded-full bg-rose-600/20 flex items-center justify-center text-rose-600">
-                  <Wallet size={16} />
+          <div className="space-y-3">
+            <div 
+              onClick={() => setPaymentMethod('wallet')}
+              className={`rounded-2xl p-4 flex items-center justify-between border cursor-pointer transition-all ${
+                paymentMethod === 'wallet' ? 'bg-slate-800/80 border-slate-500 shadow-md' : 'bg-[#18181B] border-white/5 hover:bg-slate-900/50'
+              }`}
+            >
+               <div className="flex items-center gap-3">
+                 <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${paymentMethod === 'wallet' ? 'bg-white text-black' : 'bg-slate-800/80 text-slate-400'}`}>
+                    <Wallet size={18} />
+                 </div>
+                 <div>
+                    <p className={`text-sm font-bold ${paymentMethod === 'wallet' ? 'text-white' : 'text-slate-300'}`}>Campus Wallet</p>
+                    <p className={`text-xs ${paymentMethod === 'wallet' && balance < total ? 'text-amber-500 font-bold' : 'text-slate-500'}`}>
+                      Bal: ₹{balance.toFixed(2)} {paymentMethod === 'wallet' && balance < total && '— Insufficient!'}
+                    </p>
+                 </div>
                </div>
-               <div>
-                  <p className="text-sm font-bold text-white">Campus Wallet</p>
-                  <p className={`text-[10px] ${balance < total ? 'text-red-400 font-bold' : 'text-slate-500'}`}>
-                    Bal: ₹{balance.toFixed(2)} {balance < total && '— Insufficient!'}
-                  </p>
+               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${paymentMethod === 'wallet' ? 'border-white' : 'border-slate-700'}`}>
+                 {paymentMethod === 'wallet' && <div className="w-2.5 h-2.5 rounded-full bg-white"></div>}
                </div>
-             </div>
-             <ChevronRight size={18} className="text-slate-600" />
+            </div>
+
+            <div 
+              onClick={() => setPaymentMethod('upi')}
+              className={`rounded-2xl p-4 flex items-center justify-between border cursor-pointer transition-all ${
+                paymentMethod === 'upi' ? 'bg-slate-800/80 border-slate-500 shadow-md' : 'bg-[#18181B] border-white/5 hover:bg-slate-900/50'
+              }`}
+            >
+               <div className="flex items-center gap-3">
+                 <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${paymentMethod === 'upi' ? 'bg-white text-black' : 'bg-slate-800/80 text-slate-400'}`}>
+                    <Smartphone size={18} />
+                 </div>
+                 <div>
+                    <p className={`text-sm font-bold ${paymentMethod === 'upi' ? 'text-white' : 'text-slate-300'}`}>UPI / Net Banking</p>
+                    <p className="text-xs text-slate-500">Google Pay, PhonePe, Paytm</p>
+                 </div>
+               </div>
+               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${paymentMethod === 'upi' ? 'border-white' : 'border-slate-700'}`}>
+                 {paymentMethod === 'upi' && <div className="w-2.5 h-2.5 rounded-full bg-white"></div>}
+               </div>
+            </div>
+
+            <div 
+              onClick={() => setPaymentMethod('parents')}
+              className={`rounded-2xl p-4 flex items-center justify-between border cursor-pointer transition-all ${
+                paymentMethod === 'parents' ? 'bg-slate-800/80 border-slate-500 shadow-md' : 'bg-[#18181B] border-white/5 hover:bg-slate-900/50'
+              }`}
+            >
+               <div className="flex items-center gap-3">
+                 <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${paymentMethod === 'parents' ? 'bg-white text-black' : 'bg-slate-800/80 text-slate-400'}`}>
+                    <Send size={18} />
+                 </div>
+                 <div>
+                    <p className={`text-sm font-bold ${paymentMethod === 'parents' ? 'text-white' : 'text-slate-300'}`}>Notify Parents</p>
+                    <p className="text-xs text-slate-500">Send an SMS payment link</p>
+                 </div>
+               </div>
+               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${paymentMethod === 'parents' ? 'border-white' : 'border-slate-700'}`}>
+                 {paymentMethod === 'parents' && <div className="w-2.5 h-2.5 rounded-full bg-white"></div>}
+               </div>
+            </div>
           </div>
         </div>
 
@@ -240,19 +290,23 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
          </div>
          <button 
            onClick={handlePlaceOrder}
-           disabled={isOrdering || balance < total}
-           className={`w-full font-bold py-4 rounded-2xl text-sm transition-colors text-center flex items-center justify-center gap-2 ${
+           disabled={isOrdering || (paymentMethod === 'wallet' && balance < total)}
+           className={`w-full font-bold py-4 rounded-2xl text-sm transition-all text-center flex items-center justify-center gap-2 shadow-lg ${
              isOrdering ? 'bg-slate-700 text-slate-400 cursor-wait' :
-             balance < total ? 'bg-slate-800 text-slate-500 cursor-not-allowed' :
-             'bg-rose-600 hover:bg-rose-700 text-white'
+             (paymentMethod === 'wallet' && balance < total) ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none' :
+             'bg-white hover:bg-slate-200 text-black shadow-[0_0_20px_rgba(255,255,255,0.1)]'
            }`}
          >
            {isOrdering ? (
              <>Processing...</>
-           ) : balance < total ? (
+           ) : paymentMethod === 'wallet' && balance < total ? (
              <>Insufficient Balance — Top Up First</>
+           ) : paymentMethod === 'upi' ? (
+             <><Smartphone size={16} /> Pay via UPI (₹{total.toFixed(2)})</>
+           ) : paymentMethod === 'parents' ? (
+             <><Send size={16} /> Send Link to Parents</>
            ) : (
-             <><ShoppingBag size={16} /> Place Order</>
+             <><ShoppingBag size={16} /> Pay via Wallet (₹{total.toFixed(2)})</>
            )}
          </button>
       </div>

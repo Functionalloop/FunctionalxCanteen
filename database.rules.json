@@ -26,6 +26,9 @@
         "pointsEarned": {
           ".validate": "newData.isNumber() && newData.val() >= 0"
         },
+        "reviewed": {
+          ".validate": "newData.isBoolean()"
+        },
         "status": {
           ".validate": "newData.isString() && newData.val().matches(/^(queued|preparing|ready|picked_up)$/)"
         }

@@ -1,16 +1,29 @@
 @import "tailwindcss";
 
+@theme {
+  --color-brand: #3B0012;
+  --color-brand-light: #5C0020;
+  --color-brand-lighter: #7A002E;
+  --color-brand-text: #E8506E;
+  --color-brand-muted: #9B2040;
+  --color-accent: #2563EB;
+  --color-accent-light: #3B82F6;
+}
+
 @layer base {
   body {
-    @apply bg-black text-white antialiased selection:bg-rose-600/30 selection:text-rose-100;
+    @apply bg-black text-white antialiased;
+    ::selection {
+      background: rgba(59, 0, 18, 0.4);
+      color: #E8506E;
+    }
   }
 }
 
-/* Custom scrollbar for horizontal lists */
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .hide-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

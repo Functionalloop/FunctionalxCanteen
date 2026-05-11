@@ -32,6 +32,7 @@ export interface Order {
   estimated_minutes?: number;
   estimated_ready_at?: string;
   pointsEarned?: number;
+  reviewed?: boolean;
 }
 
 export interface OrderItem {

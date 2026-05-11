@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Wallet, ArrowDownRight, ArrowUpRight, Plus, Star, User, Zap, Gift, Trophy } from 'lucide-react';
+import { Wallet, ArrowDownRight, ArrowUpRight, Plus, Star, Zap, Gift, Trophy } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { api } from '../lib/api';
 import type { WalletTransaction, Order, RewardCoupon } from '../types';
 
-export default function StudentWallet({ onNavigate }: { onNavigate: (screen: 'profile') => void }) {
+export default function StudentWallet() {
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [points, setPoints] = useState(0);
@@ -31,7 +31,7 @@ export default function StudentWallet({ onNavigate }: { onNavigate: (screen: 'pr
     setCoupons(api.getAvailableCoupons());
 
     const reviewable = orders
-      .filter(o => o.status === 'picked_up')
+      .filter(o => o.status === 'picked_up' && !o.reviewed)
       .slice(0, 3);
     setPendingReviews(reviewable);
   };
@@ -59,8 +59,8 @@ export default function StudentWallet({ onNavigate }: { onNavigate: (screen: 'pr
         await api.rateItem(item.id, rating);
       }
 
-      const pointsSnap = await api.getPoints();
-      setPoints(pointsSnap + 5);
+      await api.awardReviewPoints();
+      await api.markOrderReviewed(order.id);
 
       setPendingReviews(prev => prev.filter(o => o.id !== order.id));
       alert(`✅ Review submitted! +5 reward points earned.`);
@@ -93,18 +93,10 @@ export default function StudentWallet({ onNavigate }: { onNavigate: (screen: 'pr
   };
 
   return (
-    <div className="px-6 py-12 flex flex-col min-h-screen">
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Campus Wallet</h1>
-          <p className="text-sm text-slate-400">Balance, rewards & reviews.</p>
-        </div>
-        <button 
-          onClick={() => onNavigate('profile')}
-          className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
-        >
-          <User size={20} />
-        </button>
+    <div className="px-6 py-8 flex flex-col min-h-screen">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Campus Wallet</h1>
+        <p className="text-sm text-slate-400">Balance, rewards & reviews.</p>
       </div>
 
       <div className="space-y-6">

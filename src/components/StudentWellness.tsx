@@ -112,10 +112,11 @@ export default function StudentWellness() {
   const gpaBorderColor = gpa >= 8 ? 'border-emerald-500' : gpa >= 6 ? 'border-sky-500' : gpa >= 4 ? 'border-amber-500' : 'border-red-500';
   const gpaGlow = gpa >= 8 ? 'shadow-[0_0_15px_rgba(16,185,129,0.5)]' : gpa >= 6 ? 'shadow-[0_0_15px_rgba(14,165,233,0.5)]' : '';
 
+  const FULL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
   return (
-    <div className="px-6 py-12 flex flex-col min-h-screen">
+    <div className="px-6 py-8 flex flex-col min-h-screen">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Life GPA</h1>
         <p className="text-sm text-slate-400">Track habits, earn rewards, redeem coupons.</p>
@@ -164,9 +165,13 @@ export default function StudentWellness() {
             <Calendar size={14} className="text-slate-500" />
           </div>
           
-          <div className="flex justify-between px-2 mb-4">
+          <div 
+            className="flex justify-between px-2 mb-4" 
+            role="group" 
+            aria-label="Weekly activity calendar"
+          >
             {DAY_LABELS.map((label, i) => (
-              <DayDot key={i} day={label} status={weekStatuses[i]} />
+              <DayDot key={i} day={label} fullDay={FULL_DAYS[i]} status={weekStatuses[i]} />
             ))}
           </div>
 
@@ -248,7 +253,7 @@ export default function StudentWellness() {
   );
 }
 
-function DayDot({ day, status }: { day: string, status: DayStatus }) {
+function DayDot({ day, fullDay, status }: { day: string, fullDay: string, status: DayStatus }) {
   const getStyle = () => {
     switch (status) {
       case 'eaten': return 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)] ring-2 ring-emerald-500/20';
@@ -258,10 +263,17 @@ function DayDot({ day, status }: { day: string, status: DayStatus }) {
     }
   };
 
+  const statusLabel = status === 'eaten' ? 'Ordered' : status === 'missed' ? 'Missed order' : status === 'today' ? 'Today' : 'Future';
+
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div 
+      className="flex flex-col items-center gap-2 focus:outline-none focus:ring-2 focus:ring-white/50 rounded-lg p-1"
+      tabIndex={0}
+      aria-label={`${fullDay}, ${statusLabel}`}
+      role="img"
+    >
       <div className={`w-3 h-3 rounded-full ${getStyle()}`}></div>
-      <span className={`text-[10px] font-bold ${status === 'today' ? 'text-indigo-400' : status === 'eaten' ? 'text-emerald-500' : 'text-slate-500'}`}>{day}</span>
+      <span className={`text-[10px] font-bold ${status === 'today' ? 'text-indigo-400' : status === 'eaten' ? 'text-emerald-500' : 'text-slate-500'}`} aria-hidden="true">{day}</span>
     </div>
   );
 }

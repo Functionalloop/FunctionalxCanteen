@@ -26,15 +26,15 @@ export default function StudentProfile({ onBack, onLogout, user }: ProfileProps)
                {user.photoURL ? (
                  <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
                ) : (
-                 <div className="w-full h-full flex items-center justify-center text-rose-600 text-xl font-bold bg-rose-600/10">
+                 <div className="w-full h-full flex items-center justify-center text-brand-text text-xl font-bold bg-brand/10">
                    {(user.displayName || user.email || '?')[0].toUpperCase()}
                  </div>
                )}
             </div>
             <div>
-               <h2 className="text-base font-bold text-rose-600">{user.displayName || 'Student'}</h2>
+               <h2 className="text-base font-bold text-brand-text">{user.displayName || 'Student'}</h2>
                <p className="text-xs text-slate-500">{user.email}</p>
-               <span className="inline-block mt-1 text-[10px] bg-rose-600/10 text-rose-500 font-bold px-2 py-0.5 rounded uppercase">
+               <span className="inline-block mt-1 text-[10px] bg-brand/10 text-brand-text font-bold px-2 py-0.5 rounded uppercase">
                  {user.role}
                </span>
             </div>

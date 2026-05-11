@@ -31,10 +31,11 @@ const MENU_ITEMS = [
     allergens: ['Dairy', 'Gluten'],
     status: 'Available',
     image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80&w=600',
-    rating: 4.3,
-    reviews: 27,
+    rating: 4.6,
+    reviews: 250,
     prepTime: '15-30 min',
     distance: '1.3 km',
+    healthLevel: 2,
   },
   {
     name: 'Burger Deluxe',
@@ -44,10 +45,11 @@ const MENU_ITEMS = [
     allergens: ['Gluten', 'Dairy', 'Egg'],
     status: 'Running Low',
     image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=600',
-    rating: 4.7,
-    reviews: 35,
+    rating: 4.9,
+    reviews: 300,
     prepTime: '20-35 min',
     distance: '2.5 km',
+    healthLevel: 1,
   },
   {
     name: 'Chinese Fried Noodles',
@@ -61,6 +63,7 @@ const MENU_ITEMS = [
     reviews: 42,
     prepTime: '20-35 min',
     distance: '2.1 km',
+    healthLevel: 2,
   },
   {
     name: 'Rajma Chawal',
@@ -74,6 +77,7 @@ const MENU_ITEMS = [
     reviews: 120,
     prepTime: '5-10 min',
     distance: '0 km (Campus)',
+    healthLevel: 3,
   },
   {
     name: 'Vada Pav',
@@ -87,6 +91,7 @@ const MENU_ITEMS = [
     reviews: 89,
     prepTime: '5 min',
     distance: '0 km (Campus)',
+    healthLevel: 1,
   },
   {
     name: 'Dal Tadka + Rice',
@@ -97,9 +102,10 @@ const MENU_ITEMS = [
     status: 'Available',
     image: 'https://images.unsplash.com/photo-1546549032-9571cd6b27df?auto=format&fit=crop&q=80&w=600',
     rating: 4.3,
-    reviews: 64,
+    reviews: 180,
     prepTime: '10 min',
     distance: '0 km (Campus)',
+    healthLevel: 3,
   },
   {
     name: 'Masala Dosa',
@@ -109,10 +115,11 @@ const MENU_ITEMS = [
     allergens: ['Gluten'],
     status: 'Available',
     image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&q=80&w=600',
-    rating: 4.6,
-    reviews: 98,
+    rating: 4.7,
+    reviews: 210,
     prepTime: '10-15 min',
     distance: '0 km (Campus)',
+    healthLevel: 3,
   },
 ];
 

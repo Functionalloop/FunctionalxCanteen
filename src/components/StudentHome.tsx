@@ -4,14 +4,14 @@ import { cn } from '../lib/utils';
 import { api } from '../lib/api';
 import type { MenuItem } from '../types';
 
-export default function StudentHome({ onNavigate, onBuyItem }: { 
-  onNavigate: (screen: 'checkout' | 'profile') => void;
+export default function StudentHome({ onBuyItem }: { 
   onBuyItem: (item: MenuItem) => void;
 }) {
   const [activeMeal, setActiveMeal] = useState('All');
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [broadcasts, setBroadcasts] = useState<any[]>([]);
   const [activePill, setActivePill] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
   const [crowdStatus, setCrowdStatus] = useState<{status: string, reason: string} | null>(null);
 
   useEffect(() => {
@@ -24,31 +24,8 @@ export default function StudentHome({ onNavigate, onBuyItem }: {
   
   return (
     <div className="flex flex-col min-h-screen bg-slate-950">
-      {/* Header */}
-      <div className="bg-gradient-to-br from-rose-600 to-rose-700 rounded-b-3xl px-6 pt-12 pb-6 shadow-sm">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-3">
-            <button 
-              className="w-10 h-10 rounded-full bg-rose-500 border-2 border-white/20 overflow-hidden shrink-0 hover:border-rose-400 transition-colors"
-              onClick={() => onNavigate('profile')}
-            >
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Profile" className="w-full h-full object-cover" />
-            </button>
-            <div>
-              <div className="flex items-center text-white/90 text-sm font-medium">
-                Delivery location <span className="ml-1 opacity-70 text-xs">▼</span>
-              </div>
-              <div className="flex items-center gap-1 text-white font-semibold">
-                <MapPin size={14} /> Market Avenue
-              </div>
-            </div>
-          </div>
-          <button className="relative w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white border border-white/10 shrink-0">
-            <Bell size={20} />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
-        </div>
-        
+      {/* Header Search Area */}
+      <div className="bg-gradient-to-br from-brand to-brand-light rounded-b-3xl px-6 pt-4 pb-6 shadow-sm -mt-1">
         <h1 className="text-2xl font-bold text-white mb-4">What would you prefer to eat today?</h1>
         
         {crowdStatus && crowdStatus.status === 'Avoid' && (
@@ -62,6 +39,8 @@ export default function StudentHome({ onNavigate, onBuyItem }: {
           <input 
             type="text" 
             placeholder="Search menu, categories..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-slate-950 border border-black/10 rounded-full py-3.5 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-white/30"
           />
         </div>
@@ -98,7 +77,7 @@ export default function StudentHome({ onNavigate, onBuyItem }: {
                onClick={() => setActiveMeal(meal)}
                className={cn(
                   "flex-1 pb-3 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap px-2",
-                  activeMeal === meal ? "text-rose-600 border-rose-600" : "text-slate-500 border-transparent hover:text-slate-300"
+                  activeMeal === meal ? "text-brand-text border-brand-text" : "text-slate-500 border-transparent hover:text-slate-300"
                )}
              >
                {meal}
@@ -129,6 +108,11 @@ export default function StudentHome({ onNavigate, onBuyItem }: {
             const filteredMenu = [...menu]
               .filter(item => activeMeal === 'All' || item.category?.toLowerCase() === activeMeal.toLowerCase())
               .filter(item => {
+                if (searchQuery.trim()) {
+                  const query = searchQuery.toLowerCase().trim();
+                  return item.name.toLowerCase().includes(query) || 
+                         item.category?.toLowerCase().includes(query);
+                }
                 if (activePill === 'All') return true;
                 const searchTerm = activePill.split(' ')[1]?.toLowerCase() || activePill.toLowerCase();
                 const baseTerm = searchTerm.endsWith('s') ? searchTerm.slice(0, -1) : searchTerm;
@@ -179,7 +163,7 @@ export default function StudentHome({ onNavigate, onBuyItem }: {
                 {item.status === 'Available' || item.status === 'Running Low' ? (
                   <button 
                     onClick={() => onBuyItem(item)}
-                    className="mt-3 w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-xl text-sm transition-colors cursor-pointer"
+                    className="mt-3 w-full bg-brand hover:bg-brand-light text-white font-bold py-2 rounded-xl text-sm transition-colors cursor-pointer"
                   >
                     Buy Now
                   </button>
@@ -214,7 +198,7 @@ export default function StudentHome({ onNavigate, onBuyItem }: {
              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Top Rated Foods</span>
            </div>
            <div className="bg-[#18181B] rounded-2xl border border-slate-800 p-4 space-y-4">
-              {[...menu].sort((a,b) => b.rating - a.rating).slice(0, 3).map((item, i) => (
+              {[...menu].sort((a,b) => (b.rating * b.reviews) - (a.rating * a.reviews)).slice(0, 3).map((item, i) => (
                  <div key={item.id} className="flex items-center gap-4 cursor-pointer group" onClick={() => onBuyItem(item)}>
                     <div className="w-6 text-center text-lg font-black text-slate-600 group-hover:text-amber-500 transition-colors">#{i+1}</div>
                     <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border border-slate-800">

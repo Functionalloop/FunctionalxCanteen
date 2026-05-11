@@ -46,13 +46,13 @@ export default function LoginScreen() {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 relative overflow-hidden">
       {/* Ambient background effects */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-rose-600/10 rounded-full blur-[120px] -mt-60 pointer-events-none"></div>
-      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-sky-500/5 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-brand/20 rounded-full blur-[120px] -mt-60 pointer-events-none"></div>
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-accent/8 rounded-full blur-[100px] pointer-events-none"></div>
       
       <div className="w-full max-w-md relative z-10">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-rose-600 rounded-2xl mb-4 shadow-lg shadow-rose-600/30">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-brand rounded-2xl mb-4 shadow-lg shadow-brand/40">
             <span className="text-3xl">🍽️</span>
           </div>
           <h1 className="text-3xl font-black text-white tracking-tight mb-2">FunctionalCanteen</h1>
@@ -72,18 +72,18 @@ export default function LoginScreen() {
                 className={cn(
                   "flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all duration-200",
                   role === 'student'
-                    ? "border-rose-600 bg-rose-600/10 shadow-lg shadow-rose-600/10"
+                    ? "border-brand-light bg-brand/20 shadow-lg shadow-brand/10"
                     : "border-slate-800 bg-[#18181B] hover:border-slate-700"
                 )}
               >
                 <div className={cn(
                   "w-12 h-12 rounded-full flex items-center justify-center transition-colors",
-                  role === 'student' ? "bg-rose-600 text-white" : "bg-slate-800 text-slate-400"
+                  role === 'student' ? "bg-brand text-white" : "bg-slate-800 text-slate-400"
                 )}>
                   <GraduationCap size={22} />
                 </div>
                 <div>
-                  <div className={cn("text-sm font-bold", role === 'student' ? "text-rose-500" : "text-white")}>Student</div>
+                   <div className={cn("text-sm font-bold", role === 'student' ? "text-brand-text" : "text-white")}>Student</div>
                   <div className="text-[10px] text-slate-500">Browse & order food</div>
                 </div>
               </button>
@@ -133,7 +133,7 @@ export default function LoginScreen() {
                 value={name}
                 onChange={e => setName(e.target.value)}
                 required={isSignup}
-                className="w-full bg-[#18181B] border border-slate-800 rounded-xl py-3.5 pl-12 pr-4 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-rose-600/50 transition-colors"
+                className="w-full bg-[#18181B] border border-slate-800 rounded-xl py-3.5 pl-12 pr-4 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-brand-muted/50 transition-colors"
               />
             </div>
           )}
@@ -147,7 +147,7 @@ export default function LoginScreen() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="w-full bg-[#18181B] border border-slate-800 rounded-xl py-3.5 pl-12 pr-4 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-rose-600/50 transition-colors"
+              className="w-full bg-[#18181B] border border-slate-800 rounded-xl py-3.5 pl-12 pr-4 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-brand-muted/50 transition-colors"
             />
           </div>
 
@@ -161,7 +161,7 @@ export default function LoginScreen() {
               onChange={e => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full bg-[#18181B] border border-slate-800 rounded-xl py-3.5 pl-12 pr-12 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-rose-600/50 transition-colors"
+              className="w-full bg-[#18181B] border border-slate-800 rounded-xl py-3.5 pl-12 pr-12 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-brand-muted/50 transition-colors"
             />
             <button
               type="button"
@@ -182,7 +182,7 @@ export default function LoginScreen() {
                 ? "bg-slate-800 text-slate-500 cursor-wait"
                 : role === 'vendor'
                   ? "bg-sky-500 hover:bg-sky-600 text-white shadow-lg shadow-sky-500/20"
-                  : "bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-600/20"
+                  : "bg-brand hover:bg-brand-light text-white shadow-lg shadow-brand/20"
             )}
           >
             {isLoading ? (
@@ -224,7 +224,7 @@ export default function LoginScreen() {
             <button
               type="button"
               onClick={() => { setIsSignup(!isSignup); clearError(); }}
-              className="text-rose-500 font-bold hover:text-rose-400 transition-colors"
+              className="text-brand-text font-bold hover:text-brand-muted transition-colors"
             >
               {isSignup ? 'Sign In' : 'Sign Up'}
             </button>
