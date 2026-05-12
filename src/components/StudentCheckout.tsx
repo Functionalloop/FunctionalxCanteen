@@ -16,7 +16,10 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
   const [isOrdering, setIsOrdering] = useState(false);
   const [selectedTime, setSelectedTime] = useState('asap');
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'upi' | 'parents'>('wallet');
+  const [diningOption, setDiningOption] = useState<'dine_in' | 'takeaway'>('takeaway');
   const [showConfirm, setShowConfirm] = useState(false);
+  const [orderSuccessData, setOrderSuccessData] = useState<{points: number} | null>(null);
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   // Fallback item if none provided
   const orderItem = item || {
@@ -55,20 +58,20 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
           healthLevel: (orderItem as any).healthLevel || 1,
         }],
         total,
-        selectedTime === 'asap' ? undefined : selectedTime
+        selectedTime === 'asap' ? undefined : selectedTime,
+        diningOption
       );
 
       if ('error' in result) {
-        alert(`❌ ${result.error}`);
+        setOrderError(result.error as string);
         return;
       }
 
       const pts = (result as any).pointsEarned || 10;
-      alert(`✅ Order placed! You earned ${pts} reward points.`);
-      onOrderPlaced();
+      setOrderSuccessData({ points: pts });
     } catch (err: any) {
       console.error('Order placement failed:', err);
-      alert(`❌ Order failed: ${err?.message || 'Please check your connection and try again.'}`);
+      setOrderError(err?.message || 'Please check your connection and try again.');
     } finally {
       setIsOrdering(false);
     }
@@ -111,6 +114,22 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
               <button onClick={() => setQuantity(quantity + 1)} className="w-6 h-6 flex items-center justify-center text-white bg-slate-700 rounded-full transition-colors hover:bg-slate-600"><Plus size={14}/></button>
             </div>
           </div>
+        </div>
+
+        {/* Dining Option */}
+        <div className="flex bg-[#18181B] rounded-xl p-1 border border-white/5">
+          <button
+            onClick={() => setDiningOption('takeaway')}
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${diningOption === 'takeaway' ? 'bg-slate-800 text-white shadow' : 'text-slate-500 hover:text-white'}`}
+          >
+            🛍️ Parcel
+          </button>
+          <button
+            onClick={() => setDiningOption('dine_in')}
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${diningOption === 'dine_in' ? 'bg-slate-800 text-white shadow' : 'text-slate-500 hover:text-white'}`}
+          >
+            🍽️ Eat Here
+          </button>
         </div>
 
         {/* Group Order Toggle */}
@@ -340,6 +359,48 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
                 Confirm Order
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Overlay */}
+      {orderSuccessData && (
+        <div className="fixed inset-0 z-[200] bg-slate-950 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
+          <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mb-6">
+             <CheckCircle2 size={48} className="text-emerald-500" />
+          </div>
+          <h2 className="text-3xl font-black text-white mb-2 text-center">Order Placed!</h2>
+          <p className="text-slate-400 text-center mb-8">
+            Your order is now in the queue.<br/>
+            You earned <strong className="text-emerald-400">{orderSuccessData.points} reward points</strong>!
+          </p>
+          <button 
+            onClick={() => {
+              setOrderSuccessData(null);
+              onOrderPlaced();
+            }}
+            className="w-full max-w-xs bg-brand text-white font-bold py-4 rounded-2xl shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:bg-brand-light transition-colors"
+          >
+            Track My Order
+          </button>
+        </div>
+      )}
+
+      {/* Error Overlay */}
+      {orderError && (
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-[#18181B] border border-red-500/50 rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl">
+            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">❌</span>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Order Failed</h3>
+            <p className="text-sm text-slate-400 mb-6">{orderError}</p>
+            <button 
+              onClick={() => setOrderError(null)}
+              className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl transition-colors"
+            >
+              Try Again
+            </button>
           </div>
         </div>
       )}

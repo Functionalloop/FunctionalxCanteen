@@ -30,7 +30,10 @@
           ".validate": "newData.isBoolean()"
         },
         "status": {
-          ".validate": "newData.isString() && newData.val().matches(/^(queued|preparing|ready|picked_up)$/)"
+          ".validate": "newData.isString() && newData.val().matches(/^(queued|preparing|ready|picked_up|cancelled)$/)"
+        },
+        "diningOption": {
+          ".validate": "newData.isString() && newData.val().matches(/^(dine_in|takeaway)$/)"
         }
       }
     },

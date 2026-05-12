@@ -10,6 +10,7 @@ export default function StudentShop({ onBuyItem }: {
 }) {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string>('All');
 
   const loadItems = async () => {
     const data = await api.getMenu();
@@ -19,12 +20,47 @@ export default function StudentShop({ onBuyItem }: {
   useEffect(() => {
     loadItems();
     const unsub = subscribe(STORAGE_KEYS.MENU, loadItems);
+
+    // Auto-patch images in DB without requiring vendor to seed
+    api.getMenu().then(async menu => {
+      const images: Record<string, string> = {
+        'Chips (Magic Masala)': 'https://images.unsplash.com/photo-1599599811450-2b937088b9dd?auto=format&fit=crop&q=80&w=600',
+        'Cola Soft Drink': 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=600',
+        'Vanilla Ice Cream': 'https://images.unsplash.com/photo-1570197781417-0a52375c0ba4?auto=format&fit=crop&q=80&w=600',
+        'Mineral Water (1L)': 'https://images.unsplash.com/photo-1605518216938-7c31b7b14ad0?auto=format&fit=crop&q=80&w=600',
+        'Fresh Chaas': 'https://images.unsplash.com/photo-1596450514735-111a2fe02935?auto=format&fit=crop&q=80&w=600',
+        'Spicy Cup Noodles': 'https://images.unsplash.com/photo-1612927601601-6638404737ce?auto=format&fit=crop&q=80&w=600'
+      };
+      let patched = false;
+      for (const item of menu) {
+        if (!item.name) continue;
+        let targetName = Object.keys(images).find(k => k.toLowerCase() === item.name.toLowerCase() || item.name.toLowerCase().includes(k.split(' ')[0].toLowerCase()));
+        if (targetName && item.image !== images[targetName]) {
+           await api.updateMenuItemImage(item.id, images[targetName]);
+           patched = true;
+        }
+      }
+      if (patched) loadItems();
+    });
+
     return () => unsub();
   }, []);
 
-  const filteredItems = items.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredItems = items.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    let matchesCategory = true;
+    const n = item.name.toLowerCase();
+    if (activeCategory === 'Drinks') {
+      matchesCategory = n.includes('drink') || n.includes('water') || n.includes('chaas') || n.includes('cola') || n.includes('juice');
+    } else if (activeCategory === 'Snacks') {
+      matchesCategory = n.includes('chips') || n.includes('cream') || n.includes('chocolate') || n.includes('cookie');
+    } else if (activeCategory === 'Instant') {
+      matchesCategory = n.includes('noodle') || n.includes('cup') || n.includes('maggi');
+    }
+
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-950">
@@ -55,10 +91,30 @@ export default function StudentShop({ onBuyItem }: {
       <div className="flex-1 px-4 py-6 mb-20 overflow-y-auto hide-scrollbar">
         {/* Categories / Tags */}
         <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar mb-6 -mx-4 px-4 pb-2">
-           <div className="px-4 py-1.5 bg-indigo-500/20 text-indigo-400 text-xs font-bold uppercase rounded-full border border-indigo-500/20 whitespace-nowrap">🔥 Best Sellers</div>
-           <div className="px-4 py-1.5 bg-slate-800 text-slate-400 text-xs font-bold uppercase rounded-full border border-slate-700 whitespace-nowrap">🥤 Drinks</div>
-           <div className="px-4 py-1.5 bg-slate-800 text-slate-400 text-xs font-bold uppercase rounded-full border border-slate-700 whitespace-nowrap">🍟 Snacks</div>
-           <div className="px-4 py-1.5 bg-slate-800 text-slate-400 text-xs font-bold uppercase rounded-full border border-slate-700 whitespace-nowrap">🍜 Instant</div>
+           <button 
+             onClick={() => setActiveCategory('All')}
+             className={`px-4 py-1.5 text-xs font-bold uppercase rounded-full border whitespace-nowrap transition-colors ${activeCategory === 'All' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/20' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}`}
+           >
+             🔥 All Items
+           </button>
+           <button 
+             onClick={() => setActiveCategory('Drinks')}
+             className={`px-4 py-1.5 text-xs font-bold uppercase rounded-full border whitespace-nowrap transition-colors ${activeCategory === 'Drinks' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/20' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}`}
+           >
+             🥤 Drinks
+           </button>
+           <button 
+             onClick={() => setActiveCategory('Snacks')}
+             className={`px-4 py-1.5 text-xs font-bold uppercase rounded-full border whitespace-nowrap transition-colors ${activeCategory === 'Snacks' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/20' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}`}
+           >
+             🍟 Snacks
+           </button>
+           <button 
+             onClick={() => setActiveCategory('Instant')}
+             className={`px-4 py-1.5 text-xs font-bold uppercase rounded-full border whitespace-nowrap transition-colors ${activeCategory === 'Instant' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/20' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}`}
+           >
+             🍜 Instant
+           </button>
         </div>
 
         {/* Grid layout for shop items */}

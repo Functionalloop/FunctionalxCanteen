@@ -7,5 +7,8 @@
         "supportEmail": "ndivya945@gmail.com"
       }
     }
+  },
+  "database": {
+    "rules": "database.rules.json"
   }
 }

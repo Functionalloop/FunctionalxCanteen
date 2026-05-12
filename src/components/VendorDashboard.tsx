@@ -599,7 +599,14 @@ function OrderCard({ order, onAction, onSetTimer, actionLabel, actionColor }: {
   return (
     <div className="bg-[#18181B] border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition-colors">
       <div className="flex justify-between items-start mb-3">
-        <div className="text-2xl font-black text-white">{order.tokenNo}</div>
+        <div className="flex items-center gap-3">
+          <div className="text-2xl font-black text-white">{order.tokenNo}</div>
+          {order.diningOption === 'takeaway' ? (
+            <span className="bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full">🛍️ Parcel</span>
+          ) : (
+            <span className="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full">🍽️ Eat Here</span>
+          )}
+        </div>
         <span className="text-[10px] text-slate-500">{timeAgo}</span>
       </div>
       <div className="space-y-1.5 mb-3">

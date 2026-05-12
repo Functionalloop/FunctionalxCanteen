@@ -158,6 +158,11 @@ export const api = {
     return { success: true };
   },
 
+  updateMenuItemImage: async (itemId: string, image: string) => {
+    await update(ref(db, `menu/${itemId}`), { image });
+    return { success: true };
+  },
+
   addMenuItem: async (item: Omit<MenuItem, 'id'>) => {
     const newRef = push(ref(db, 'menu'));
     const newItem: MenuItem = { ...item, id: newRef.key! };
@@ -169,7 +174,8 @@ export const api = {
   placeOrder: async (
     items: OrderItem[],
     total_amount: number,
-    scheduledTime?: string
+    scheduledTime?: string,
+    diningOption?: 'dine_in' | 'takeaway'
   ) => {
     try {
       const userId = uid();
@@ -210,6 +216,7 @@ export const api = {
         scheduled_time: scheduledTime || new Date().toISOString(),
         created_at: new Date().toISOString(),
         pointsEarned,
+        diningOption: diningOption || 'dine_in',
       };
       await set(orderRef, order);
 
@@ -273,7 +280,7 @@ export const api = {
 
   getActiveOrders: async (): Promise<Order[]> => {
     const all = await api.getOrders();
-    return all.filter((o) => o.status !== 'picked_up');
+    return all.filter((o) => o.status !== 'picked_up' && o.status !== 'cancelled');
   },
 
   updateOrderStatus: async (orderId: string, status: OrderStatus) => {
@@ -292,6 +299,52 @@ export const api = {
     await update(ref(db, `orders/${orderId}`), updates);
     const snap = await get(ref(db, `orders/${orderId}`));
     return { success: true, order: snap.val() };
+  },
+
+  cancelOrder: async (orderId: string) => {
+    try {
+      const snap = await get(ref(db, `orders/${orderId}`));
+      if (!snap.exists()) throw new Error('Order not found');
+      const order = snap.val() as Order;
+      
+      if (order.status !== 'queued') {
+        throw new Error('Can only cancel orders that are still queued. Vendor may have started preparing it.');
+      }
+
+      const userId = order.studentId;
+      if (userId !== uid()) throw new Error('Unauthorized');
+
+      // Refund the amount to wallet
+      const walletRef = ref(db, `users/${userId}/wallet`);
+      const balanceSnap = await get(walletRef);
+      const currentBalance: number = balanceSnap.exists() ? balanceSnap.val() : 0;
+      await set(walletRef, currentBalance + order.total_amount);
+
+      // Create refund transaction
+      const txnRef = push(ref(db, `users/${userId}/transactions`));
+      const txn: WalletTransaction = {
+        id: txnRef.key!,
+        type: 'credit',
+        amount: order.total_amount,
+        description: `Refund for Cancelled Order (Token ${order.tokenNo})`,
+        timestamp: new Date().toLocaleString(),
+      };
+      await set(txnRef, txn);
+
+      // Deduct the points earned from this order
+      if (order.pointsEarned) {
+        const pointsRef = ref(db, `users/${userId}/points`);
+        const pointsSnap = await get(pointsRef);
+        const currentPoints = pointsSnap.exists() ? pointsSnap.val() : 0;
+        await set(pointsRef, Math.max(0, currentPoints - order.pointsEarned));
+      }
+
+      // Update status to cancelled
+      await update(ref(db, `orders/${orderId}`), { status: 'cancelled' });
+      return { success: true };
+    } catch (err: any) {
+      return { error: err?.message || 'Failed to cancel order' };
+    }
   },
 
   setOrderTimer: async (orderId: string, minutes: number) => {
@@ -528,12 +581,12 @@ export const api = {
       { name: 'Vada Pav', category: 'snacks', price: 35, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1626074353765-517a681e40be?auto=format&fit=crop&q=80&w=600', rating: 4.2, reviews: 89, prepTime: '5 min', distance: '0 km (Campus)', healthLevel: 1 },
       { name: 'Dal Tadka + Rice', category: 'dinner', price: 70, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1546549032-9571cd6b27df?auto=format&fit=crop&q=80&w=600', rating: 4.3, reviews: 180, prepTime: '10 min', distance: '0 km (Campus)', healthLevel: 3 },
       { name: 'Masala Dosa', category: 'breakfast', price: 60, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&q=80&w=600', rating: 4.7, reviews: 210, prepTime: '10-15 min', distance: '0 km (Campus)', healthLevel: 3 },
-      { name: 'Chips (Magic Masala)', category: 'Shop', price: 20, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1566478989037-e124c36815a5?auto=format&fit=crop&q=80&w=600', rating: 4.5, reviews: 120, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 1 },
+      { name: 'Chips (Magic Masala)', category: 'Shop', price: 20, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1599599811450-2b937088b9dd?auto=format&fit=crop&q=80&w=600', rating: 4.5, reviews: 120, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 1 },
       { name: 'Cola Soft Drink', category: 'Shop', price: 40, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=600', rating: 4.2, reviews: 85, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 1 },
-      { name: 'Vanilla Ice Cream', category: 'Shop', price: 30, dietary: 'Veg', allergens: ['Dairy'], status: 'Available', image: 'https://images.unsplash.com/photo-1558500624-958564e9a8f2?auto=format&fit=crop&q=80&w=600', rating: 4.8, reviews: 200, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 1 },
-      { name: 'Mineral Water (1L)', category: 'Shop', price: 20, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?auto=format&fit=crop&q=80&w=600', rating: 5.0, reviews: 50, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 3 },
-      { name: 'Fresh Chaas', category: 'Shop', price: 15, dietary: 'Veg', allergens: ['Dairy'], status: 'Available', image: 'https://images.unsplash.com/photo-1626082929543-5b8744047a06?auto=format&fit=crop&q=80&w=600', rating: 4.7, reviews: 150, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 3 },
-      { name: 'Spicy Cup Noodles', category: 'Shop', price: 50, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1594488588523-28688828b868?auto=format&fit=crop&q=80&w=600', rating: 4.4, reviews: 95, prepTime: '3 min', distance: '0 km (Campus)', healthLevel: 1 },
+      { name: 'Vanilla Ice Cream', category: 'Shop', price: 30, dietary: 'Veg', allergens: ['Dairy'], status: 'Available', image: 'https://images.unsplash.com/photo-1570197781417-0a52375c0ba4?auto=format&fit=crop&q=80&w=600', rating: 4.8, reviews: 200, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 1 },
+      { name: 'Mineral Water (1L)', category: 'Shop', price: 20, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1605518216938-7c31b7b14ad0?auto=format&fit=crop&q=80&w=600', rating: 5.0, reviews: 50, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 3 },
+      { name: 'Fresh Chaas', category: 'Shop', price: 15, dietary: 'Veg', allergens: ['Dairy'], status: 'Available', image: 'https://images.unsplash.com/photo-1596450514735-111a2fe02935?auto=format&fit=crop&q=80&w=600', rating: 4.7, reviews: 150, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 3 },
+      { name: 'Spicy Cup Noodles', category: 'Shop', price: 50, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1612927601601-6638404737ce?auto=format&fit=crop&q=80&w=600', rating: 4.4, reviews: 95, prepTime: '3 min', distance: '0 km (Campus)', healthLevel: 1 },
     ] as const;
 
     for (const item of INITIAL_MENU) {

@@ -10,10 +10,16 @@ export default function StudentQueue() {
   const [showNightBooking, setShowNightBooking] = useState(false);
   const [breakfastMenu, setBreakfastMenu] = useState<MenuItem[]>([]);
   const [ordering, setOrdering] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{msg: string, type: 'success'|'error'} | null>(null);
+
+  const showToast = (msg: string, type: 'success'|'error') => {
+    setToastMessage({msg, type});
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   const loadOrders = async () => {
     const all = await api.getMyOrders();
-    const active = all.filter(o => o.status !== 'picked_up');
+    const active = all.filter(o => o.status !== 'picked_up' && o.status !== 'cancelled');
     setOrders(active);
     setAllOrders(all);
   };
@@ -38,9 +44,9 @@ export default function StudentQueue() {
       }], item.price, 'tomorrow_morning');
       
       if ('error' in result) {
-        alert(`❌ ${result.error}`);
+        showToast(result.error as string, 'error');
       } else {
-        alert('✅ Breakfast successfully pre-booked for tomorrow morning!');
+        showToast('Breakfast successfully pre-booked for tomorrow morning!', 'success');
         setShowNightBooking(false);
         loadOrders();
       }
@@ -49,8 +55,18 @@ export default function StudentQueue() {
     }
   };
 
+  const handleCancelOrder = async (orderId: string) => {
+    const result = await api.cancelOrder(orderId);
+    if ('error' in result) {
+      showToast(result.error as string, 'error');
+    } else {
+      showToast('Order cancelled. Amount refunded to wallet.', 'success');
+      loadOrders();
+    }
+  };
+
   const activeOrder = orders.length > 0 ? orders[0] : null;
-  const pastOrders = allOrders.filter(o => o.status === 'picked_up').slice(0, 5);
+  const pastOrders = allOrders.filter(o => o.status === 'picked_up' || o.status === 'cancelled').slice(0, 5);
 
   return (
     <div className="px-6 py-12 flex flex-col min-h-screen">
@@ -68,7 +84,7 @@ export default function StudentQueue() {
         
         {/* Active Order(s) */}
         {activeOrder ? (
-          <ActiveOrderCard order={activeOrder} />
+          <ActiveOrderCard order={activeOrder} onCancel={handleCancelOrder} />
         ) : (
           <div className="bg-[#18181B] border border-slate-800 rounded-2xl p-8 text-center">
             <ShoppingBag size={40} className="text-slate-700 mx-auto mb-3" />
@@ -87,11 +103,28 @@ export default function StudentQueue() {
                   <div className="flex items-center gap-3">
                     <div className="text-lg font-black text-white">{order.tokenNo}</div>
                     <div>
-                      <div className="text-sm font-bold text-white">{order.items.map((i: any) => i.name).join(', ')}</div>
+                      <div className="flex gap-2 items-center">
+                        <span className="text-sm font-bold text-white">{order.items.map((i: any) => i.name).join(', ')}</span>
+                        {order.diningOption === 'takeaway' ? (
+                          <span className="bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[8px] font-bold px-1.5 py-0.5 rounded-full">Parcel</span>
+                        ) : (
+                          <span className="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[8px] font-bold px-1.5 py-0.5 rounded-full">Eat Here</span>
+                        )}
+                      </div>
                       <div className="text-[10px] text-slate-500">₹{order.total_amount.toFixed(2)}</div>
                     </div>
                   </div>
-                  <OrderStatusBadge status={order.status} />
+                  <div className="flex flex-col items-end gap-2">
+                    <OrderStatusBadge status={order.status} />
+                    {order.status === 'queued' && (
+                      <button 
+                        onClick={() => handleCancelOrder(order.id)}
+                        className="text-[10px] text-red-400 hover:text-red-300 underline font-medium"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -153,7 +186,7 @@ export default function StudentQueue() {
 
         {/* Group Order Flow */}
         <button 
-          onClick={() => alert('Group Order feature coming soon!')}
+          onClick={() => showToast('Group Order feature coming soon!', 'error')}
           className="w-full bg-[#18181B] border border-slate-800 hover:bg-slate-900 rounded-2xl p-4 flex items-center gap-4 transition-colors text-left group"
         >
           <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center shrink-0 text-slate-400 group-hover:text-white transition-colors">
@@ -213,11 +246,25 @@ export default function StudentQueue() {
           </div>
         </div>
       )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-5 fade-in duration-300">
+          <div className={`px-6 py-3 rounded-full shadow-lg border text-sm font-bold flex items-center gap-2 ${
+            toastMessage.type === 'success' 
+              ? 'bg-emerald-500/90 text-white border-emerald-500/20' 
+              : 'bg-red-500/90 text-white border-red-500/20'
+          }`}>
+            {toastMessage.type === 'success' ? <CheckCircle2 size={16} /> : <X size={16} />}
+            {toastMessage.msg}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function ActiveOrderCard({ order }: { order: Order }) {
+function ActiveOrderCard({ order, onCancel }: { order: Order; onCancel?: (id: string) => void }) {
   const [countdown, setCountdown] = useState('');
   const [progress, setProgress] = useState(0);
 
@@ -264,7 +311,14 @@ function ActiveOrderCard({ order }: { order: Order }) {
       <div className="flex justify-between items-start mb-4">
         <div>
           <p className="text-xs text-brand-text font-bold uppercase tracking-wider mb-1">Your Token</p>
-          <div className="text-4xl font-black text-white">{order.tokenNo}</div>
+          <div className="flex items-center gap-3">
+            <div className="text-4xl font-black text-white">{order.tokenNo}</div>
+            {order.diningOption === 'takeaway' ? (
+              <span className="bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] font-bold px-2 py-1 rounded-full">🛍️ Parcel</span>
+            ) : (
+              <span className="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] font-bold px-2 py-1 rounded-full">🍽️ Eat Here</span>
+            )}
+          </div>
         </div>
         <div className="text-right">
           <p className="text-xs text-slate-500 font-medium mb-1">Status</p>
@@ -358,10 +412,18 @@ function ActiveOrderCard({ order }: { order: Order }) {
 
       {/* Waiting message for queued */}
       {order.status === 'queued' && (
-        <div className="rounded-xl p-3 mb-4 bg-yellow-500/10 border border-yellow-500/20 text-center">
-          <div className="text-xs text-yellow-400 font-medium">
+        <div className="rounded-xl p-3 mb-4 bg-yellow-500/10 border border-yellow-500/20 flex flex-col items-center">
+          <div className="text-xs text-yellow-400 font-medium mb-2">
             ⏳ Waiting for vendor to start your order...
           </div>
+          {onCancel && (
+            <button 
+              onClick={() => onCancel(order.id)}
+              className="text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30 px-4 py-1.5 rounded-lg transition-colors font-bold"
+            >
+              Cancel Order
+            </button>
+          )}
         </div>
       )}
 
@@ -393,6 +455,7 @@ function OrderStatusBadge({ status }: { status: string }) {
     preparing: { label: 'COOKING', color: 'text-orange-500 bg-orange-500/10' },
     ready: { label: 'READY!', color: 'text-emerald-500 bg-emerald-500/10 animate-pulse' },
     picked_up: { label: 'DONE', color: 'text-slate-500 bg-slate-800' },
+    cancelled: { label: 'CANCELLED', color: 'text-red-500 bg-red-500/10' },
   };
   const c = config[status] || config.queued;
   return <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-full uppercase", c.color)}>{c.label}</span>;

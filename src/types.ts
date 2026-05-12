@@ -1,7 +1,7 @@
 export type Allergen = 'Gluten' | 'Dairy' | 'Egg' | 'Nuts' | 'Peanuts';
 export type Dietary = 'Veg' | 'Non-Veg' | 'Egg';
 export type MenuStatus = 'Available' | 'Running Low' | 'Finished';
-export type OrderStatus = 'queued' | 'preparing' | 'ready' | 'picked_up';
+export type OrderStatus = 'queued' | 'preparing' | 'ready' | 'picked_up' | 'cancelled';
 export type HealthLevel = 1 | 2 | 3;
 
 export interface MenuItem {
@@ -33,6 +33,7 @@ export interface Order {
   estimated_ready_at?: string;
   pointsEarned?: number;
   reviewed?: boolean;
+  diningOption?: 'dine_in' | 'takeaway';
 }
 
 export interface OrderItem {
