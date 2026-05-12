@@ -16,6 +16,7 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
   const [isOrdering, setIsOrdering] = useState(false);
   const [selectedTime, setSelectedTime] = useState('asap');
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'upi' | 'parents'>('wallet');
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // Fallback item if none provided
   const orderItem = item || {
@@ -289,7 +290,7 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
            <span className="text-xl font-bold text-white">₹{total.toFixed(2)}</span>
          </div>
          <button 
-           onClick={handlePlaceOrder}
+           onClick={() => setShowConfirm(true)}
            disabled={isOrdering || (paymentMethod === 'wallet' && balance < total)}
            className={`w-full font-bold py-4 rounded-2xl text-sm transition-all text-center flex items-center justify-center gap-2 shadow-lg ${
              isOrdering ? 'bg-slate-700 text-slate-400 cursor-wait' :
@@ -310,6 +311,38 @@ export default function StudentCheckout({ item, onBack, onOrderPlaced }: Checkou
            )}
          </button>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowConfirm(false)}></div>
+          <div className="relative bg-[#18181B] border border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-bold text-white mb-2">Confirm Your Order</h3>
+            <p className="text-sm text-slate-400 mb-6">
+              You are about to pay <strong className="text-white">₹{total.toFixed(2)}</strong> for <strong className="text-white">{quantity}x {orderItem.name}</strong> via {paymentMethod === 'wallet' ? 'Wallet' : paymentMethod === 'upi' ? 'UPI' : 'Parents'}.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 px-4 py-3 rounded-xl font-bold text-sm bg-slate-800 text-white hover:bg-slate-700 transition-colors"
+                disabled={isOrdering}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  setShowConfirm(false);
+                  handlePlaceOrder();
+                }}
+                className="flex-1 px-4 py-3 rounded-xl font-bold text-sm bg-brand text-white hover:bg-brand-light transition-colors"
+                disabled={isOrdering}
+              >
+                Confirm Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

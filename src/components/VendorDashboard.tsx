@@ -391,6 +391,8 @@ export default function VendorDashboard() {
                   <option value="lunch">Lunch</option>
                   <option value="snacks">Snacks</option>
                   <option value="dinner">Dinner</option>
+                  <option value="Shop">Shop Items</option>
+                  <option value="Beverages">Beverages</option>
                 </select>
                 <input type="number" placeholder="Price (₹)" value={templatePrice} onChange={e => setTemplatePrice(e.target.value)} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-sky-500/50" />
               </div>
@@ -496,6 +498,55 @@ export default function VendorDashboard() {
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-500 inline-block"></span> 🥗 Moderate (Level 2)</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-500 inline-block"></span> 💚 Healthy (Level 3)</span>
           </div>
+        </div>
+      </div>
+
+      {/* ═══════════════ SHOP INVENTORY ═══════════════ */}
+      <div className="mb-10">
+        <div className="flex justify-between items-end mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2"><Package size={20} className="text-indigo-500" /> Shop Inventory</h2>
+            <p className="text-xs text-slate-500">Manage availability of packaged goods and drinks.</p>
+          </div>
+        </div>
+        <div className="bg-[#18181B] rounded-2xl border border-slate-800 p-5">
+          {menuItems.filter(item => item.category === 'Shop' || item.category === 'Beverages').length === 0 ? (
+            <div className="text-center text-slate-500 text-sm py-8">No shop items available. Seed the menu first.</div>
+          ) : (
+            <div className="space-y-3">
+              {menuItems.filter(item => item.category === 'Shop' || item.category === 'Beverages').map(item => (
+                <div key={item.id} className="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-800/50">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {item.image && <img src={item.image} className="w-10 h-10 rounded-lg object-cover shrink-0" alt={item.name} />}
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold text-white truncate">{item.name}</div>
+                      <div className="text-[10px] text-slate-500">₹{item.price} • <span className={cn("font-bold", item.status === 'Available' ? "text-emerald-500" : item.status === 'Running Low' ? "text-amber-500" : "text-red-500")}>{item.status}</span></div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => api.updateMenuItemStatus(item.id, 'Available').then(loadMenuItems)}
+                      className={cn("px-2 py-1 rounded text-[10px] font-bold transition-colors", item.status === 'Available' ? "bg-emerald-500 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700")}
+                    >
+                      Available
+                    </button>
+                    <button
+                      onClick={() => api.updateMenuItemStatus(item.id, 'Running Low').then(loadMenuItems)}
+                      className={cn("px-2 py-1 rounded text-[10px] font-bold transition-colors", item.status === 'Running Low' ? "bg-amber-500 text-black" : "bg-slate-800 text-slate-400 hover:bg-slate-700")}
+                    >
+                      Low
+                    </button>
+                    <button
+                      onClick={() => api.updateMenuItemStatus(item.id, 'Finished').then(loadMenuItems)}
+                      className={cn("px-2 py-1 rounded text-[10px] font-bold transition-colors", item.status === 'Finished' ? "bg-red-500 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700")}
+                    >
+                      Out
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
