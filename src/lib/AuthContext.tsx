@@ -34,7 +34,7 @@ interface AuthContextType {
 }
 
 // Helper for DB timeouts
-const withTimeout = <T>(promise: Promise<T>, ms = 5000): Promise<T> => {
+const withTimeout = <T,>(promise: Promise<T>, ms = 5000): Promise<T> => {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) => 
