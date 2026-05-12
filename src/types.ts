@@ -18,6 +18,8 @@ export interface MenuItem {
   prepTime: string;
   distance: string;
   healthLevel?: HealthLevel;
+  proteinGrams?: number;
+  isProteinRich?: boolean;
 }
 
 export interface Order {
@@ -70,4 +72,32 @@ export interface RewardCoupon {
   pointsCost: number;
   redeemed: boolean;
   redeemedAt?: string;
+}
+
+// ── Mess Subscription ─────────────────────────────────────────
+export type MessPlanType = 'basic' | 'standard' | 'premium';
+
+export interface MessPlan {
+  id: MessPlanType;
+  name: string;
+  price: number;
+  duration: number; // days
+  mealsPerDay: number;
+  description: string;
+  features: string[];
+}
+
+export interface MessSubscription {
+  id: string;
+  userId: string;
+  planId: MessPlanType;
+  planName: string;
+  startDate: string;
+  endDate: string;
+  mealsPerDay: number;
+  mealsUsedToday: number;
+  lastMealDate: string;
+  totalMealsRemaining: number;
+  active: boolean;
+  createdAt: string;
 }

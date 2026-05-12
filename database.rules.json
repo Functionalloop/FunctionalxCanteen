@@ -6,6 +6,12 @@
       "$itemId": {
         "healthLevel": {
           ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
+        },
+        "proteinGrams": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "isProteinRich": {
+          ".validate": "newData.isBoolean()"
         }
       }
     },
@@ -81,6 +87,25 @@
 
         "email": {
           ".validate": "newData.isString()"
+        },
+
+        "messSubscription": {
+          ".validate": "newData.hasChildren(['id', 'userId', 'planId', 'planName', 'startDate', 'endDate', 'mealsPerDay', 'active', 'createdAt'])",
+          "planId": {
+            ".validate": "newData.isString() && newData.val().matches(/^(basic|standard|premium)$/)"
+          },
+          "mealsPerDay": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
+          },
+          "mealsUsedToday": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          },
+          "totalMealsRemaining": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          },
+          "active": {
+            ".validate": "newData.isBoolean()"
+          }
         }
       }
     },
