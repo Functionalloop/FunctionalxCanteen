@@ -30,3 +30,4 @@ A modern, fast, and feature-rich campus dining application designed to streamlin
 - Frontend: React + TypeScript
 - Styling: Tailwind CSS & Lucide Icons
 - Database & Auth: Firebase Realtime Database and Firebase Authentication"# FunctionalCanteen" 
+"# FunctionalCanteen" 
