@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Search, MapPin, Heart, Clock, Star, Trophy } from 'lucide-react';
+import { Bell, Search, MapPin, Heart, Clock, Star, Trophy, Dumbbell } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { api } from '../lib/api';
 import type { MenuItem } from '../types';
@@ -138,6 +138,11 @@ export default function StudentHome({ onBuyItem }: {
               
               <div className="h-32 w-full relative overflow-hidden bg-slate-800">
                 <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                {item.isProteinRich && (
+                  <div className="absolute bottom-1.5 left-1.5 bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shadow-lg">
+                    <Dumbbell size={8} /> {item.proteinGrams}g
+                  </div>
+                )}
               </div>
               
               <div className="p-4">

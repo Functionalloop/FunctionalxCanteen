@@ -1,7 +1,7 @@
 export type Allergen = 'Gluten' | 'Dairy' | 'Egg' | 'Nuts' | 'Peanuts';
 export type Dietary = 'Veg' | 'Non-Veg' | 'Egg';
 export type MenuStatus = 'Available' | 'Running Low' | 'Finished';
-export type OrderStatus = 'queued' | 'preparing' | 'ready' | 'picked_up';
+export type OrderStatus = 'queued' | 'preparing' | 'ready' | 'picked_up' | 'cancelled';
 export type HealthLevel = 1 | 2 | 3;
 
 export interface MenuItem {
@@ -18,6 +18,8 @@ export interface MenuItem {
   prepTime: string;
   distance: string;
   healthLevel?: HealthLevel;
+  proteinGrams?: number;
+  isProteinRich?: boolean;
 }
 
 export interface Order {
@@ -33,6 +35,7 @@ export interface Order {
   estimated_ready_at?: string;
   pointsEarned?: number;
   reviewed?: boolean;
+  diningOption?: 'dine_in' | 'takeaway';
 }
 
 export interface OrderItem {
@@ -69,4 +72,32 @@ export interface RewardCoupon {
   pointsCost: number;
   redeemed: boolean;
   redeemedAt?: string;
+}
+
+// ── Mess Subscription ─────────────────────────────────────────
+export type MessPlanType = 'basic' | 'standard' | 'premium';
+
+export interface MessPlan {
+  id: MessPlanType;
+  name: string;
+  price: number;
+  duration: number; // days
+  mealsPerDay: number;
+  description: string;
+  features: string[];
+}
+
+export interface MessSubscription {
+  id: string;
+  userId: string;
+  planId: MessPlanType;
+  planName: string;
+  startDate: string;
+  endDate: string;
+  mealsPerDay: number;
+  mealsUsedToday: number;
+  lastMealDate: string;
+  totalMealsRemaining: number;
+  active: boolean;
+  createdAt: string;
 }

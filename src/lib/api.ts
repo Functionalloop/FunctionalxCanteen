@@ -10,6 +10,7 @@
  *   /users/{uid}/gpa                     – number (0-10)
  *   /users/{uid}/streak                  – number
  *   /users/{uid}/points                  – number (reward points)
+ *   /users/{uid}/messSubscription        – MessSubscription
  *   /menuTemplates/{templateId}          – MenuTemplate
  *   /tokenCounter                        – number
  */
@@ -35,6 +36,9 @@ import type {
   OrderStatus,
   RewardCoupon,
   HealthLevel,
+  MessSubscription,
+  MessPlanType,
+  MessPlan,
 } from '../types';
 
 // ─── Template Type ───────────────────────────────────────────
@@ -158,6 +162,11 @@ export const api = {
     return { success: true };
   },
 
+  updateMenuItemImage: async (itemId: string, image: string) => {
+    await update(ref(db, `menu/${itemId}`), { image });
+    return { success: true };
+  },
+
   addMenuItem: async (item: Omit<MenuItem, 'id'>) => {
     const newRef = push(ref(db, 'menu'));
     const newItem: MenuItem = { ...item, id: newRef.key! };
@@ -169,7 +178,8 @@ export const api = {
   placeOrder: async (
     items: OrderItem[],
     total_amount: number,
-    scheduledTime?: string
+    scheduledTime?: string,
+    diningOption?: 'dine_in' | 'takeaway'
   ) => {
     try {
       const userId = uid();
@@ -210,6 +220,7 @@ export const api = {
         scheduled_time: scheduledTime || new Date().toISOString(),
         created_at: new Date().toISOString(),
         pointsEarned,
+        diningOption: diningOption || 'dine_in',
       };
       await set(orderRef, order);
 
@@ -273,7 +284,7 @@ export const api = {
 
   getActiveOrders: async (): Promise<Order[]> => {
     const all = await api.getOrders();
-    return all.filter((o) => o.status !== 'picked_up');
+    return all.filter((o) => o.status !== 'picked_up' && o.status !== 'cancelled');
   },
 
   updateOrderStatus: async (orderId: string, status: OrderStatus) => {
@@ -292,6 +303,52 @@ export const api = {
     await update(ref(db, `orders/${orderId}`), updates);
     const snap = await get(ref(db, `orders/${orderId}`));
     return { success: true, order: snap.val() };
+  },
+
+  cancelOrder: async (orderId: string) => {
+    try {
+      const snap = await get(ref(db, `orders/${orderId}`));
+      if (!snap.exists()) throw new Error('Order not found');
+      const order = snap.val() as Order;
+      
+      if (order.status !== 'queued') {
+        throw new Error('Can only cancel orders that are still queued. Vendor may have started preparing it.');
+      }
+
+      const userId = order.studentId;
+      if (userId !== uid()) throw new Error('Unauthorized');
+
+      // Refund the amount to wallet
+      const walletRef = ref(db, `users/${userId}/wallet`);
+      const balanceSnap = await get(walletRef);
+      const currentBalance: number = balanceSnap.exists() ? balanceSnap.val() : 0;
+      await set(walletRef, currentBalance + order.total_amount);
+
+      // Create refund transaction
+      const txnRef = push(ref(db, `users/${userId}/transactions`));
+      const txn: WalletTransaction = {
+        id: txnRef.key!,
+        type: 'credit',
+        amount: order.total_amount,
+        description: `Refund for Cancelled Order (Token ${order.tokenNo})`,
+        timestamp: new Date().toLocaleString(),
+      };
+      await set(txnRef, txn);
+
+      // Deduct the points earned from this order
+      if (order.pointsEarned) {
+        const pointsRef = ref(db, `users/${userId}/points`);
+        const pointsSnap = await get(pointsRef);
+        const currentPoints = pointsSnap.exists() ? pointsSnap.val() : 0;
+        await set(pointsRef, Math.max(0, currentPoints - order.pointsEarned));
+      }
+
+      // Update status to cancelled
+      await update(ref(db, `orders/${orderId}`), { status: 'cancelled' });
+      return { success: true };
+    } catch (err: any) {
+      return { error: err?.message || 'Failed to cancel order' };
+    }
   },
 
   setOrderTimer: async (orderId: string, minutes: number) => {
@@ -521,19 +578,25 @@ export const api = {
     await set(ref(db, 'menu'), null);
 
     const INITIAL_MENU = [
-      { name: 'Tandoori Pizza', category: 'snacks', price: 350, dietary: 'Veg', allergens: ['Dairy', 'Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80&w=600', rating: 4.6, reviews: 250, prepTime: '15-30 min', distance: '1.3 km', healthLevel: 2 },
-      { name: 'Burger Deluxe', category: 'lunch', price: 180, dietary: 'Non-Veg', allergens: ['Gluten', 'Dairy', 'Egg'], status: 'Available', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=600', rating: 4.9, reviews: 300, prepTime: '20-35 min', distance: '2.5 km', healthLevel: 1 },
-      { name: 'Chinese Fried Noodles', category: 'dinner', price: 120, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&q=80&w=600', rating: 4.5, reviews: 42, prepTime: '20-35 min', distance: '2.1 km', healthLevel: 2 },
-      { name: 'Rajma Chawal', category: 'lunch', price: 80, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1626082895617-2c6bfcc32746?auto=format&fit=crop&q=80&w=600', rating: 4.8, reviews: 120, prepTime: '5-10 min', distance: '0 km (Campus)', healthLevel: 3 },
-      { name: 'Vada Pav', category: 'snacks', price: 35, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1626074353765-517a681e40be?auto=format&fit=crop&q=80&w=600', rating: 4.2, reviews: 89, prepTime: '5 min', distance: '0 km (Campus)', healthLevel: 1 },
-      { name: 'Dal Tadka + Rice', category: 'dinner', price: 70, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1546549032-9571cd6b27df?auto=format&fit=crop&q=80&w=600', rating: 4.3, reviews: 180, prepTime: '10 min', distance: '0 km (Campus)', healthLevel: 3 },
-      { name: 'Masala Dosa', category: 'breakfast', price: 60, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&q=80&w=600', rating: 4.7, reviews: 210, prepTime: '10-15 min', distance: '0 km (Campus)', healthLevel: 3 },
-      { name: 'Chips (Magic Masala)', category: 'Shop', price: 20, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1566478989037-e124c36815a5?auto=format&fit=crop&q=80&w=600', rating: 4.5, reviews: 120, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 1 },
+      { name: 'Tandoori Pizza', category: 'snacks', price: 350, dietary: 'Veg', allergens: ['Dairy', 'Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80&w=600', rating: 4.6, reviews: 250, prepTime: '15-30 min', distance: '1.3 km', healthLevel: 2, proteinGrams: 12, isProteinRich: false },
+      { name: 'Burger Deluxe', category: 'lunch', price: 180, dietary: 'Non-Veg', allergens: ['Gluten', 'Dairy', 'Egg'], status: 'Available', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=600', rating: 4.9, reviews: 300, prepTime: '20-35 min', distance: '2.5 km', healthLevel: 1, proteinGrams: 28, isProteinRich: true },
+      { name: 'Chinese Fried Noodles', category: 'dinner', price: 120, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&q=80&w=600', rating: 4.5, reviews: 42, prepTime: '20-35 min', distance: '2.1 km', healthLevel: 2, proteinGrams: 8, isProteinRich: false },
+      { name: 'Rajma Chawal', category: 'lunch', price: 80, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1626082895617-2c6bfcc32746?auto=format&fit=crop&q=80&w=600', rating: 4.8, reviews: 120, prepTime: '5-10 min', distance: '0 km (Campus)', healthLevel: 3, proteinGrams: 18, isProteinRich: true },
+      { name: 'Vada Pav', category: 'snacks', price: 35, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1626074353765-517a681e40be?auto=format&fit=crop&q=80&w=600', rating: 4.2, reviews: 89, prepTime: '5 min', distance: '0 km (Campus)', healthLevel: 1, proteinGrams: 6, isProteinRich: false },
+      { name: 'Dal Tadka + Rice', category: 'dinner', price: 70, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1546549032-9571cd6b27df?auto=format&fit=crop&q=80&w=600', rating: 4.3, reviews: 180, prepTime: '10 min', distance: '0 km (Campus)', healthLevel: 3, proteinGrams: 14, isProteinRich: false },
+      { name: 'Masala Dosa', category: 'breakfast', price: 60, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&q=80&w=600', rating: 4.7, reviews: 210, prepTime: '10-15 min', distance: '0 km (Campus)', healthLevel: 3, proteinGrams: 10, isProteinRich: false },
+      { name: 'Paneer Tikka', category: 'snacks', price: 160, dietary: 'Veg', allergens: ['Dairy'], status: 'Available', image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&q=80&w=600', rating: 4.8, reviews: 175, prepTime: '15 min', distance: '0 km (Campus)', healthLevel: 3, proteinGrams: 26, isProteinRich: true },
+      { name: 'Egg Bhurji + Paratha', category: 'breakfast', price: 70, dietary: 'Egg', allergens: ['Egg', 'Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&q=80&w=600', rating: 4.6, reviews: 140, prepTime: '10 min', distance: '0 km (Campus)', healthLevel: 3, proteinGrams: 22, isProteinRich: true },
+      { name: 'Chicken Biryani', category: 'lunch', price: 150, dietary: 'Non-Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&q=80&w=600', rating: 4.9, reviews: 320, prepTime: '20-30 min', distance: '0 km (Campus)', healthLevel: 2, proteinGrams: 32, isProteinRich: true },
+      { name: 'Sprouts Salad Bowl', category: 'snacks', price: 60, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=600', rating: 4.4, reviews: 65, prepTime: '5 min', distance: '0 km (Campus)', healthLevel: 3, proteinGrams: 20, isProteinRich: true },
+      { name: 'Soya Chaap', category: 'dinner', price: 110, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&q=80&w=600', rating: 4.5, reviews: 88, prepTime: '15 min', distance: '0 km (Campus)', healthLevel: 3, proteinGrams: 24, isProteinRich: true },
+      { name: 'Chole Bhature', category: 'breakfast', price: 75, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1626132647523-66f5bf380027?auto=format&fit=crop&q=80&w=600', rating: 4.7, reviews: 190, prepTime: '10 min', distance: '0 km (Campus)', healthLevel: 1, proteinGrams: 16, isProteinRich: true },
+      { name: 'Chips (Magic Masala)', category: 'Shop', price: 20, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1599599811450-2b937088b9dd?auto=format&fit=crop&q=80&w=600', rating: 4.5, reviews: 120, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 1 },
       { name: 'Cola Soft Drink', category: 'Shop', price: 40, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=600', rating: 4.2, reviews: 85, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 1 },
-      { name: 'Vanilla Ice Cream', category: 'Shop', price: 30, dietary: 'Veg', allergens: ['Dairy'], status: 'Available', image: 'https://images.unsplash.com/photo-1558500624-958564e9a8f2?auto=format&fit=crop&q=80&w=600', rating: 4.8, reviews: 200, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 1 },
-      { name: 'Mineral Water (1L)', category: 'Shop', price: 20, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?auto=format&fit=crop&q=80&w=600', rating: 5.0, reviews: 50, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 3 },
-      { name: 'Fresh Chaas', category: 'Shop', price: 15, dietary: 'Veg', allergens: ['Dairy'], status: 'Available', image: 'https://images.unsplash.com/photo-1626082929543-5b8744047a06?auto=format&fit=crop&q=80&w=600', rating: 4.7, reviews: 150, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 3 },
-      { name: 'Spicy Cup Noodles', category: 'Shop', price: 50, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1594488588523-28688828b868?auto=format&fit=crop&q=80&w=600', rating: 4.4, reviews: 95, prepTime: '3 min', distance: '0 km (Campus)', healthLevel: 1 },
+      { name: 'Vanilla Ice Cream', category: 'Shop', price: 30, dietary: 'Veg', allergens: ['Dairy'], status: 'Available', image: 'https://images.unsplash.com/photo-1570197781417-0a52375c0ba4?auto=format&fit=crop&q=80&w=600', rating: 4.8, reviews: 200, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 1 },
+      { name: 'Mineral Water (1L)', category: 'Shop', price: 20, dietary: 'Veg', allergens: [], status: 'Available', image: 'https://images.unsplash.com/photo-1605518216938-7c31b7b14ad0?auto=format&fit=crop&q=80&w=600', rating: 5.0, reviews: 50, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 3 },
+      { name: 'Fresh Chaas', category: 'Shop', price: 15, dietary: 'Veg', allergens: ['Dairy'], status: 'Available', image: 'https://images.unsplash.com/photo-1596450514735-111a2fe02935?auto=format&fit=crop&q=80&w=600', rating: 4.7, reviews: 150, prepTime: 'Instant', distance: '0 km (Campus)', healthLevel: 3 },
+      { name: 'Spicy Cup Noodles', category: 'Shop', price: 50, dietary: 'Veg', allergens: ['Gluten'], status: 'Available', image: 'https://images.unsplash.com/photo-1612927601601-6638404737ce?auto=format&fit=crop&q=80&w=600', rating: 4.4, reviews: 95, prepTime: '3 min', distance: '0 km (Campus)', healthLevel: 1 },
     ] as const;
 
     for (const item of INITIAL_MENU) {
@@ -587,5 +650,141 @@ export const api = {
 
   markOrderReviewed: async (orderId: string) => {
     await update(ref(db, `orders/${orderId}`), { reviewed: true });
+  },
+
+  // ── Mess Subscription ─────────────────────────────────────
+  getMessPlans: (): MessPlan[] => [
+    {
+      id: 'basic',
+      name: 'Basic',
+      price: 1500,
+      duration: 30,
+      mealsPerDay: 1,
+      description: '1 meal/day for 30 days',
+      features: ['1 meal per day', 'Breakfast OR Lunch OR Dinner', 'Skip any day', '₹50/meal value'],
+    },
+    {
+      id: 'standard',
+      name: 'Standard',
+      price: 2800,
+      duration: 30,
+      mealsPerDay: 2,
+      description: '2 meals/day for 30 days',
+      features: ['2 meals per day', 'Choose any 2 slots', 'Skip any day', '₹47/meal value', '5% wallet cashback'],
+    },
+    {
+      id: 'premium',
+      name: 'Premium',
+      price: 3800,
+      duration: 30,
+      mealsPerDay: 3,
+      description: '3 meals/day for 30 days',
+      features: ['3 meals per day', 'Breakfast + Lunch + Dinner', 'Skip any day', '₹42/meal value', '10% wallet cashback', 'Priority queue'],
+    },
+  ],
+
+  getMySubscription: async (): Promise<MessSubscription | null> => {
+    const userId = uid();
+    const data = await readOnce<MessSubscription | null>(`users/${userId}/messSubscription`, null);
+    if (!data) return null;
+    // Check if subscription expired
+    if (new Date(data.endDate) < new Date()) {
+      await update(ref(db, `users/${userId}/messSubscription`), { active: false });
+      return { ...data, active: false };
+    }
+    // Reset mealsUsedToday if a new day
+    const today = new Date().toISOString().split('T')[0];
+    if (data.lastMealDate !== today) {
+      await update(ref(db, `users/${userId}/messSubscription`), { mealsUsedToday: 0, lastMealDate: today });
+      return { ...data, mealsUsedToday: 0, lastMealDate: today };
+    }
+    return data;
+  },
+
+  subscribeMess: async (planId: MessPlanType) => {
+    try {
+      const userId = uid();
+      const plans = api.getMessPlans();
+      const plan = plans.find(p => p.id === planId);
+      if (!plan) throw new Error('Plan not found');
+
+      // Check wallet balance
+      const walletSnap = await get(ref(db, `users/${userId}/wallet`));
+      const balance: number = walletSnap.exists() ? walletSnap.val() : 0;
+      if (balance < plan.price) throw new Error(`Insufficient balance. You need ₹${plan.price} but have ₹${balance}.`);
+
+      // Deduct from wallet
+      await set(ref(db, `users/${userId}/wallet`), balance - plan.price);
+
+      // Create transaction
+      const txnRef = push(ref(db, `users/${userId}/transactions`));
+      const txn: WalletTransaction = {
+        id: txnRef.key!,
+        type: 'deduction',
+        amount: plan.price,
+        description: `Mess ${plan.name} Plan (${plan.duration} days)`,
+        timestamp: new Date().toLocaleString(),
+      };
+      await set(txnRef, txn);
+
+      // Create subscription
+      const startDate = new Date();
+      const endDate = new Date(startDate.getTime() + plan.duration * 86400000);
+      const sub: MessSubscription = {
+        id: generateId(),
+        userId,
+        planId: plan.id,
+        planName: plan.name,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        mealsPerDay: plan.mealsPerDay,
+        mealsUsedToday: 0,
+        lastMealDate: startDate.toISOString().split('T')[0],
+        totalMealsRemaining: plan.mealsPerDay * plan.duration,
+        active: true,
+        createdAt: new Date().toISOString(),
+      };
+      await set(ref(db, `users/${userId}/messSubscription`), sub);
+
+      return { success: true, subscription: sub };
+    } catch (err: any) {
+      return { error: err?.message || 'Subscription failed' };
+    }
+  },
+
+  useMessMeal: async () => {
+    try {
+      const userId = uid();
+      const sub = await api.getMySubscription();
+      if (!sub || !sub.active) throw new Error('No active mess subscription');
+      if (sub.mealsUsedToday >= sub.mealsPerDay) throw new Error(`You\'ve used all ${sub.mealsPerDay} meals for today`);
+      if (sub.totalMealsRemaining <= 0) throw new Error('No meals remaining in your plan');
+
+      const today = new Date().toISOString().split('T')[0];
+      await update(ref(db, `users/${userId}/messSubscription`), {
+        mealsUsedToday: sub.mealsUsedToday + 1,
+        totalMealsRemaining: sub.totalMealsRemaining - 1,
+        lastMealDate: today,
+      });
+      return { success: true, mealsLeft: sub.mealsPerDay - sub.mealsUsedToday - 1, totalRemaining: sub.totalMealsRemaining - 1 };
+    } catch (err: any) {
+      return { error: err?.message || 'Failed to use meal' };
+    }
+  },
+
+  cancelMessSubscription: async () => {
+    try {
+      const userId = uid();
+      await update(ref(db, `users/${userId}/messSubscription`), { active: false });
+      return { success: true };
+    } catch (err: any) {
+      return { error: err?.message || 'Failed to cancel subscription' };
+    }
+  },
+
+  // ── Protein Rich Items ────────────────────────────────────
+  getProteinRichItems: async (): Promise<MenuItem[]> => {
+    const menu = await api.getMenu();
+    return menu.filter(item => item.isProteinRich || (item.proteinGrams && item.proteinGrams >= 15));
   },
 };

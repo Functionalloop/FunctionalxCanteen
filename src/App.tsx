@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, ClipboardList, Activity, Wallet, LogOut, ChevronDown, MapPin, Bell, ShoppingBag } from 'lucide-react';
+import { Home, ClipboardList, Activity, Wallet, LogOut, ChevronDown, MapPin, Bell, ShoppingBag, Utensils } from 'lucide-react';
 import { cn } from './lib/utils';
 import type { MenuItem } from './types';
 import { AuthProvider, useAuth } from './lib/AuthContext';
@@ -13,6 +13,7 @@ import StudentNotifications from './components/StudentNotifications';
 import VendorDashboard from './components/VendorDashboard';
 import StudentCheckout from './components/StudentCheckout';
 import StudentShop from './components/StudentShop';
+import StudentMess from './components/StudentMess';
 import { useEffect } from 'react';
 
 export default function App() {
@@ -53,7 +54,7 @@ function AppRouter() {
 }
 
 
-type StudentTab = 'home' | 'shop' | 'queue' | 'wellness' | 'wallet' | 'notifications';
+type StudentTab = 'home' | 'shop' | 'queue' | 'wellness' | 'wallet' | 'notifications' | 'mess';
 
 function StudentApp({ user, onLogout }: { user: any; onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<StudentTab>('home');
@@ -142,6 +143,7 @@ function StudentApp({ user, onLogout }: { user: any; onLogout: () => void }) {
       <main className="flex-1 mx-auto w-full max-w-lg relative z-0 overflow-y-auto overflow-x-hidden">
         {activeTab === 'home' && <StudentHome onBuyItem={handleBuyItem} />}
         {activeTab === 'shop' && <StudentShop onBuyItem={handleBuyItem} />}
+        {activeTab === 'mess' && <StudentMess onBuyItem={handleBuyItem} />}
         {activeTab === 'queue' && <StudentQueue />}
         {activeTab === 'wellness' && <StudentWellness />}
         {activeTab === 'wallet' && <StudentWallet />}
@@ -149,12 +151,13 @@ function StudentApp({ user, onLogout }: { user: any; onLogout: () => void }) {
       </main>
 
       {/* Bottom nav */}
-      <nav className="fixed bottom-0 w-full max-w-lg left-1/2 -translate-x-1/2 bg-zinc-950/95 backdrop-blur-lg border-t border-zinc-900 z-50 px-6 py-3 pb-safe flex justify-between items-center">
-        <NavItem icon={<Home size={22} />} label="Home" isActive={activeTab === 'home'} onClick={() => setActiveTab('home')} />
-        <NavItem icon={<ShoppingBag size={22} />} label="Shop" isActive={activeTab === 'shop'} onClick={() => setActiveTab('shop')} />
-        <NavItem icon={<ClipboardList size={22} />} label="Queue" isActive={activeTab === 'queue'} onClick={() => setActiveTab('queue')} />
-        <NavItem icon={<Activity size={22} />} label="Life GPA" isActive={activeTab === 'wellness'} onClick={() => setActiveTab('wellness')} />
-        <NavItem icon={<Wallet size={22} />} label="Wallet" isActive={activeTab === 'wallet'} onClick={() => setActiveTab('wallet')} />
+      <nav className="fixed bottom-0 w-full max-w-lg left-1/2 -translate-x-1/2 bg-zinc-950/95 backdrop-blur-lg border-t border-zinc-900 z-50 px-4 py-3 pb-safe flex justify-between items-center">
+        <NavItem icon={<Home size={20} />} label="Home" isActive={activeTab === 'home'} onClick={() => setActiveTab('home')} />
+        <NavItem icon={<ShoppingBag size={20} />} label="Shop" isActive={activeTab === 'shop'} onClick={() => setActiveTab('shop')} />
+        <NavItem icon={<Utensils size={20} />} label="Mess" isActive={activeTab === 'mess'} onClick={() => setActiveTab('mess')} />
+        <NavItem icon={<ClipboardList size={20} />} label="Queue" isActive={activeTab === 'queue'} onClick={() => setActiveTab('queue')} />
+        <NavItem icon={<Activity size={20} />} label="GPA" isActive={activeTab === 'wellness'} onClick={() => setActiveTab('wellness')} />
+        <NavItem icon={<Wallet size={20} />} label="Wallet" isActive={activeTab === 'wallet'} onClick={() => setActiveTab('wallet')} />
       </nav>
     </div>
   );
